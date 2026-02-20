@@ -109,10 +109,16 @@ REST_FRAMEWORK = {
 }
 
 # CORS settings
-CORS_ALLOWED_ORIGINS = os.getenv(
+def _csv_env(var_name: str, default: str = ''):
+    value = os.getenv(var_name, default)
+    return [item.strip() for item in value.split(',') if item.strip()]
+
+
+CORS_ALLOWED_ORIGINS = _csv_env(
     'CORS_ALLOWED_ORIGINS',
     'http://localhost:5173,http://localhost:3000'
-).split(',')
+)
+CORS_ALLOWED_ORIGIN_REGEXES = _csv_env('CORS_ALLOWED_ORIGIN_REGEXES', '')
 
 CORS_ALLOW_CREDENTIALS = True
 
