@@ -39,6 +39,7 @@ export default function BlogGenerator() {
   const navigate = useNavigate();
   const { personas, isLoading: personasLoading } = usePersonas();
   const { state, generateBlog, cancelGeneration, retryLastJob } = useBlogGeneration();
+  const personaList = Array.isArray(personas) ? personas : [];
 
   const [topic, setTopic] = useState('');
   const [selectedPersona, setSelectedPersona] = useState('technical');
@@ -90,7 +91,7 @@ export default function BlogGenerator() {
             </label>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {Object.entries(personaDescriptions).map(([slug, desc]) => {
-                const persona = personas.find(p => p.slug === slug);
+                const persona = personaList.find(p => p.slug === slug);
                 if (!persona) return null;
 
                 const isSelected = selectedPersona === slug;

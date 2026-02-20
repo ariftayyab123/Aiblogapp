@@ -18,8 +18,19 @@ export function usePersonas() {
 
     try {
       const response = await personaApi.list();
+      const payload = response.data;
+      const personas = Array.isArray(payload?.results)
+        ? payload.results
+        : Array.isArray(payload)
+          ? payload
+          : null;
+
+      if (!personas) {
+        throw new Error('Invalid personas response shape. Check VITE_API_URL and backend /api/personas/ endpoint.');
+      }
+
       setState({
-        personas: response.data.results || response.data,
+        personas,
         isLoading: false,
         error: null,
       });
@@ -38,6 +49,7 @@ export function usePersonas() {
   }, [fetchPersonas]);
 
   const getPersonaBySlug = useCallback((slug) => {
+    if (!Array.isArray(state.personas)) return null;
     return state.personas.find(p => p.slug === slug);
   }, [state.personas]);
 
