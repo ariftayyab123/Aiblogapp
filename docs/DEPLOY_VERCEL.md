@@ -7,6 +7,8 @@ This app has two runtimes:
 Vercel does not run long-lived Celery workers, so background generation workers should stay on backend infrastructure.
 
 ## 1. Deploy Backend First
+For Render-specific setup, follow `docs/DEPLOY_RENDER.md`.
+
 Deploy `backend/` to your backend host and set environment variables:
 - `DJANGO_SECRET_KEY`
 - `DJANGO_DEBUG=False`

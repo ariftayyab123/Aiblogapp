@@ -31,7 +31,7 @@ services:
         condition: service_healthy
     environment:
       - DATABASE_URL=postgresql://postgres:postgres@db:5432/ai_blog
-      - ANTHROPIC_API_KEY={f65edb6ae99241d8b77dead46d27df0e.22uSOPFRNRvABZ9K}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
       - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY:-django-insecure-local-dev}
       - DJANGO_DEBUG=True
       - CORS_ALLOWED_ORIGINS=http://localhost:5173,http://localhost:3000
