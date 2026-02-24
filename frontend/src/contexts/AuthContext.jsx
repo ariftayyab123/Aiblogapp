@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { AUTH_TOKEN_STORAGE_KEY, authApi } from '../services/api';
 
 const AUTH_USER_STORAGE_KEY = 'auth_user';
@@ -16,7 +16,7 @@ export function AuthProvider({ children }) {
     }
   });
 
-  const persistAuth = (newToken, userData) => {
+  const persistAuth = useCallback((newToken, userData) => {
     if (!newToken) return;
     localStorage.setItem(AUTH_TOKEN_STORAGE_KEY, newToken);
     setToken(newToken);
@@ -24,15 +24,15 @@ export function AuthProvider({ children }) {
       localStorage.setItem(AUTH_USER_STORAGE_KEY, JSON.stringify(userData));
       setUser(userData);
     }
-  };
+  }, []);
 
-  const login = async (email, password) => {
+  const login = useCallback(async (email, password) => {
     const response = await authApi.login({ email, password });
     persistAuth(response.data?.token || '', response.data?.user || null);
     return response.data;
-  };
+  }, [persistAuth]);
 
-  const register = async (email, password, confirmPassword) => {
+  const register = useCallback(async (email, password, confirmPassword) => {
     const response = await authApi.register({
       email,
       password,
@@ -40,14 +40,14 @@ export function AuthProvider({ children }) {
     });
     persistAuth(response.data?.token || '', response.data?.user || null);
     return response.data;
-  };
+  }, [persistAuth]);
 
-  const logout = () => {
+  const logout = useCallback(() => {
     localStorage.removeItem(AUTH_TOKEN_STORAGE_KEY);
     localStorage.removeItem(AUTH_USER_STORAGE_KEY);
     setToken('');
     setUser(null);
-  };
+  }, []);
 
   useEffect(() => {
     const sync = () => {
@@ -80,7 +80,7 @@ export function AuthProvider({ children }) {
       register,
       logout,
     }),
-    [token, user]
+    [token, user, login, register, logout]
   );
 
   return (
