@@ -44,6 +44,10 @@ export default function BlogGenerator() {
   const [topic, setTopic] = useState('');
   const [selectedPersona, setSelectedPersona] = useState('technical');
   const [speed, setSpeed] = useState('fast');
+  const lengthHint =
+    speed === 'normal'
+      ? 'Detailed mode usually takes longer (higher quality, longer output).'
+      : 'Brief mode is faster and returns a concise, quick-read version.';
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -62,7 +66,7 @@ export default function BlogGenerator() {
   const isLoading = state.isGenerating || personasLoading;
 
   return (
-    <div className="max-w-3xl mx-auto">
+    <div className="w-full">
       <Card>
         <CardHeader>
           <CardTitle>Generate AI Blog Post</CardTitle>
@@ -78,7 +82,7 @@ export default function BlogGenerator() {
             placeholder="e.g., The future of renewable energy in developing countries..."
             value={topic}
             onChange={(e) => setTopic(e.target.value)}
-            rows={4}
+            rows={5}
             disabled={isLoading}
             error={topic.length > 0 && topic.length < 5 ? 'Topic must be at least 5 characters' : ''}
             required
@@ -95,12 +99,6 @@ export default function BlogGenerator() {
                 if (!persona) return null;
 
                 const isSelected = selectedPersona === slug;
-                const colorClasses = {
-                  blue: 'border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-900/20',
-                  purple: 'border-purple-200 bg-purple-50 dark:border-purple-800 dark:bg-purple-900/20',
-                  green: 'border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-900/20',
-                  yellow: 'border-yellow-200 bg-yellow-50 dark:border-yellow-800 dark:bg-yellow-900/20',
-                };
 
                 return (
                   <button
@@ -110,8 +108,8 @@ export default function BlogGenerator() {
                     disabled={isLoading}
                     className={`p-4 rounded-lg border-2 text-left transition-all ${
                       isSelected
-                        ? `border-primary-500 bg-primary-50 dark:bg-primary-900/20 dark:border-primary-500`
-                        : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+                        ? 'border-primary-500 bg-primary-50/80 dark:bg-primary-900/20 dark:border-primary-500 shadow-sm'
+                        : 'border-gray-200 dark:border-gray-700 hover:border-primary-300 dark:hover:border-primary-700 hover:shadow-sm'
                     }`}
                   >
                     <div className="flex items-start justify-between mb-1">
@@ -132,16 +130,25 @@ export default function BlogGenerator() {
           </div>
 
           {/* Generate Button */}
-          <div className="relative flex items-center gap-6">
-            <select
-              value={speed}
-              onChange={(e) => setSpeed(e.target.value)}
-              disabled={isLoading}
-              className="appearance-none px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800"
-            >
-              <option value="fast">Fast</option>
-              <option value="normal">Normal</option>
-            </select>
+          <div className="relative flex flex-col md:flex-row md:items-end gap-4 md:gap-6">
+            <div className="min-w-48">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Blog Length
+              </label>
+              <select
+                value={speed}
+                onChange={(e) => setSpeed(e.target.value)}
+                disabled={isLoading}
+                aria-label="Blog detail level"
+                className="w-full appearance-none px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-primary-500"
+              >
+                <option value="fast">Brief (quick read)</option>
+                <option value="normal">Detailed (in-depth)</option>
+              </select>
+              <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                {lengthHint}
+              </p>
+            </div>
             
             <Button
               type="submit"
@@ -149,7 +156,7 @@ export default function BlogGenerator() {
               size="lg"
               isLoading={isLoading}
               disabled={topic.trim().length < 5 || isLoading}
-              className="w-full"
+              className="w-full md:flex-1"
             >
               {isLoading ? (
                 <>Generating...</>

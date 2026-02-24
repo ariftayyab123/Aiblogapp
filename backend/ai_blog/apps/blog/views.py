@@ -5,7 +5,7 @@ Thin API layer that delegates to service layer.
 from rest_framework import viewsets, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from django.utils.decorators import method_decorator
 from django.shortcuts import get_object_or_404
 from django.views.decorators.cache import cache_page
@@ -30,7 +30,6 @@ from .serializers import (
 from .services.generation import BlogGenerationService
 from .services.engagement import EngagementService
 from .tasks import generate_post_job
-from ai_blog.apps.core.permissions import IsAdminOrDevOpen
 
 
 class PersonaViewSet(viewsets.ReadOnlyModelViewSet):
@@ -50,7 +49,7 @@ class BlogPostViewSet(viewsets.ModelViewSet):
     """
     ViewSet for BlogPost CRUD operations.
     """
-    queryset = BlogPost.objects.select_related('persona').all()
+    queryset = BlogPost.objects.select_related('persona', 'owner').all()
     lookup_field = 'id'
 
     def get_serializer_class(self):
@@ -63,13 +62,9 @@ class BlogPostViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         """Apply filters from query params"""
-        queryset = super().get_queryset()
+        queryset = super().get_queryset().filter(owner=self.request.user)
         status_filter = self.request.query_params.get('status')
         persona = self.request.query_params.get('persona')
-
-        if getattr(settings, 'ADMIN_AUTH_REQUIRED', False):
-            if not (self.request.user and self.request.user.is_authenticated and self.request.user.is_staff):
-                queryset = queryset.filter(status=BlogPost.PostStatus.COMPLETED)
 
         if status_filter:
             queryset = queryset.filter(status=status_filter)
@@ -79,9 +74,7 @@ class BlogPostViewSet(viewsets.ModelViewSet):
         return queryset
 
     def get_permissions(self):
-        if self.action in {'destroy', 'create', 'update', 'partial_update'}:
-            return [IsAdminOrDevOpen()]
-        return [AllowAny()]
+        return [IsAuthenticated()]
 
 
 class BlogGenerationView(APIView):
@@ -90,14 +83,15 @@ class BlogGenerationView(APIView):
     Delegates to BlogGenerationService.
     """
 
-    permission_classes = [IsAdminOrDevOpen]
+    permission_classes = [IsAuthenticated]
 
     @staticmethod
-    def _run_sync_generation(data):
+    def _run_sync_generation(data, owner):
         service = BlogGenerationService()
         return service.generate_post(
             topic=data['topic'],
             persona_slug=data['persona'],
+            owner=owner,
             additional_context=data.get('additional_context'),
             speed=data.get('speed', 'fast')
         )
@@ -112,15 +106,17 @@ class BlogGenerationView(APIView):
 
         try:
             sync = request.query_params.get('sync', 'false').lower() == 'true'
+            force_sync = getattr(settings, 'QUEUE_ALWAYS_SYNC', False)
 
-            if sync:
+            if sync or force_sync:
                 # Backward compatibility path for internal/dev use.
-                result = self._run_sync_generation(data)
+                result = self._run_sync_generation(data, request.user)
                 response_serializer = BlogGenerationResponseSerializer(result)
                 return Response(response_serializer.data, status=status.HTTP_201_CREATED)
 
             job = GenerationJob.objects.create(
                 topic=data['topic'],
+                owner=request.user,
                 persona_slug=data['persona'],
                 session_id=data.get('session_id', ''),
                 speed=data.get('speed', 'fast'),
@@ -135,7 +131,7 @@ class BlogGenerationView(APIView):
             except (KombuOperationalError, ConnectionError, OSError):
                 if getattr(settings, 'QUEUE_SYNC_FALLBACK', False):
                     # Local/dev reliability: continue with sync path if queue is unavailable.
-                    result = self._run_sync_generation(data)
+                    result = self._run_sync_generation(data, request.user)
                     response_serializer = BlogGenerationResponseSerializer(result)
                     return Response(response_serializer.data, status=status.HTTP_201_CREATED)
                 return Response({
@@ -169,10 +165,10 @@ class BlogGenerationView(APIView):
 class GenerationStatusView(APIView):
     """Poll status for asynchronous blog generation jobs."""
 
-    permission_classes = [IsAdminOrDevOpen]
+    permission_classes = [IsAuthenticated]
 
     def get(self, request, job_id):
-        job = get_object_or_404(GenerationJob, id=job_id)
+        job = get_object_or_404(GenerationJob, id=job_id, owner=request.user)
         serializer = GenerationStatusSerializer(job)
         return Response(serializer.data)
 
@@ -247,7 +243,7 @@ class AnalyticsView(APIView):
     API endpoint for analytics data.
     """
 
-    permission_classes = [IsAdminOrDevOpen]
+    permission_classes = [IsAuthenticated]
 
     @method_decorator(cache_page(settings.CACHE_TTL_SECONDS))
     def get(self, request):
@@ -261,7 +257,8 @@ class AnalyticsView(APIView):
             date_to = request.query_params.get('to')
 
             posts_queryset = BlogPost.objects.filter(
-                status=BlogPost.PostStatus.COMPLETED
+                status=BlogPost.PostStatus.COMPLETED,
+                owner=request.user,
             )
             if date_from:
                 parsed_from = parse_datetime(date_from)
@@ -350,6 +347,19 @@ class AnalyticsView(APIView):
                     'details': {}
                 }
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class PublicBlogPostBySlugView(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request, slug):
+        post = get_object_or_404(
+            BlogPost.objects.select_related('persona'),
+            slug=slug,
+            status=BlogPost.PostStatus.COMPLETED,
+        )
+        serializer = BlogPostDetailSerializer(post)
+        return Response(serializer.data)
 
 
 # Simple list views for ViewSets

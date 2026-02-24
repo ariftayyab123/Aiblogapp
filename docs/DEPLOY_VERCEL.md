@@ -1,59 +1,71 @@
-# Deploy on Vercel (Frontend) + Hosted Django API
+# Fullstack Deploy on Vercel (Frontend + Backend)
 
-This app has two runtimes:
-- Frontend (React/Vite): deploy to Vercel.
-- Backend (Django + PostgreSQL + Redis/Celery): deploy to a backend platform (Render/Railway/Fly/etc).
+This repo is deployed as **two Vercel projects**:
+1. Frontend project (`rootDir=frontend`)
+2. Backend project (`rootDir=backend`)
 
-Vercel does not run long-lived Celery workers, so background generation workers should stay on backend infrastructure.
+## 1) Deploy Backend on Vercel
 
-## 1. Deploy Backend First
-For Render-specific setup, follow `docs/DEPLOY_RENDER.md`.
+### Project settings
+- Framework preset: `Other`
+- Root Directory: `backend`
+- Install Command: `pip install -r requirements.txt`
+- Build Command: leave empty (or default)
+- Output Directory: leave empty
 
-Deploy `backend/` to your backend host and set environment variables:
+Backend runtime routing already exists:
+- `backend/vercel.json` routes all requests to `api/wsgi.py`
+
+### Required backend env vars
 - `DJANGO_SECRET_KEY`
 - `DJANGO_DEBUG=False`
-- `ALLOWED_HOSTS=<your-backend-host>`
-- `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_HOST`, `DB_PORT`
-- `LLM_PROVIDER`
-- Provider keys/models:
-  - Anthropic: `ANTHROPIC_API_KEY`, `CLAUDE_MODEL`, `CLAUDE_FAST_MODEL`
-  - Gemini: `GEMINI_API_KEY`, `GEMINI_MODEL`, `GEMINI_FAST_MODEL`
-- Queue/cache:
-  - `REDIS_URL`
-  - `QUEUE_SYNC_FALLBACK` (optional)
+- `ALLOWED_HOSTS=<your-backend-domain>.vercel.app`
+- `CORS_ALLOWED_ORIGINS=https://<your-frontend-domain>.vercel.app`
+- `CSRF_TRUSTED_ORIGINS=https://<your-frontend-domain>.vercel.app`
+- `DATABASE_URL=<managed-postgres-url>`
+- `LLM_PROVIDER=anthropic` (or `gemini`)
+- `ANTHROPIC_API_KEY` and model vars (if anthropic)
+- `GEMINI_API_KEY` and model vars (if gemini)
+- `QUEUE_ALWAYS_SYNC=True` (recommended on Vercel serverless)
+- `QUEUE_SYNC_FALLBACK=True`
 
-Then run migrations and (if needed) `loadpersonas`.
+Optional:
+- `REDIS_URL` (only if you later run async queue infra)
 
-## 2. Configure Backend CORS for Vercel
-Set on backend:
-- `CORS_ALLOWED_ORIGINS=https://<your-vercel-domain>`
-- Optional preview support:
-  - `CORS_ALLOWED_ORIGIN_REGEXES=https://.*\\.vercel\\.app`
+### One-time backend bootstrap
+Run once against production DB:
+```bash
+cd backend
+python manage.py migrate
+python manage.py loadpersonas
+```
 
-## 3. Deploy Frontend to Vercel
-In Vercel:
-1. Import repo.
-2. Set **Root Directory** to `frontend`.
-3. Build settings:
-   - Install command: `npm install`
-   - Build command: `npm run build`
-   - Output directory: `dist`
-4. Add environment variables:
-   - `VITE_API_URL=https://<your-backend-domain>/api`
-   - `VITE_BLOG_ID_SECRET=<strong-random-secret>`
-   - `VITE_API_TOKEN=<optional-admin-token-if-needed>`
-5. Deploy.
+## 2) Deploy Frontend on Vercel
 
-`frontend/vercel.json` is included to rewrite SPA routes to `index.html`.
+### Project settings
+- Framework preset: `Vite`
+- Root Directory: `frontend`
+- Build Command: `npm run build`
+- Output Directory: `dist`
 
-## 4. Post-Deploy Verification
-1. Open frontend URL and load home page.
-2. Check `/blogs` and `/analytics`.
-3. Generate a post:
-   - If async is enabled, ensure backend Redis + Celery worker are running.
-4. Confirm browser network calls go to `https://<backend>/api/...` and CORS is successful.
+Frontend routing rewrite already exists:
+- `frontend/vercel.json`
 
-## 5. Common Issues
-- `CORS blocked`: backend `CORS_ALLOWED_ORIGINS` missing Vercel domain.
-- `Generation slow`: Redis/Celery worker not running, fallback sync path in use.
-- `401/403`: set `ADMIN_AUTH_REQUIRED` appropriately and provide token when required.
+### Required frontend env vars
+- `VITE_API_URL=https://<your-backend-domain>.vercel.app/api`
+
+Optional:
+- `VITE_API_TOKEN` (dev-only fallback; not required for normal user auth flow)
+
+## 3) Verify Production Flow
+1. Open frontend URL.
+2. Register user at `/register`.
+3. Login and generate blog.
+4. Open shared URL `/share/:slug` in another browser.
+5. Submit helpful/not-helpful feedback.
+6. Check owner analytics in `/analytics`.
+
+## Notes
+- This project currently uses token auth and owner-scoped APIs.
+- Shared page is public by design and has no navbar/admin controls.
+- For heavy generation load, migrate generation traffic to worker-based async infrastructure later.

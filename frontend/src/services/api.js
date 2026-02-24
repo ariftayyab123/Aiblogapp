@@ -5,6 +5,7 @@
 import axios from 'axios';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
+export const AUTH_TOKEN_STORAGE_KEY = 'auth_token';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -19,7 +20,9 @@ api.interceptors.request.use(
     if (!config.headers['X-Request-ID']) {
       config.headers['X-Request-ID'] = crypto.randomUUID();
     }
-    const token = import.meta.env.VITE_API_TOKEN;
+    const token =
+      localStorage.getItem(AUTH_TOKEN_STORAGE_KEY) ||
+      import.meta.env.VITE_API_TOKEN;
     if (token) {
       config.headers.Authorization = `Token ${token}`;
     }
@@ -34,6 +37,12 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error) => {
+    if (error.response?.status === 401) {
+      localStorage.removeItem(AUTH_TOKEN_STORAGE_KEY);
+      localStorage.removeItem('auth_user');
+      window.dispatchEvent(new Event('auth-cleared'));
+    }
+
     const errorMessage = error.response?.data?.error?.message ||
                          error.response?.data?.detail ||
                          error.message ||
@@ -62,6 +71,9 @@ export const blogApi = {
   // Get a single blog post
   get: (id) => api.get(`/posts/${id}/`),
 
+  // Get public blog post by slug
+  getPublicBySlug: (slug) => api.get(`/posts/slug/${slug}/public/`),
+
   // Delete a blog post
   delete: (id) => api.delete(`/posts/${id}/`),
 };
@@ -88,6 +100,12 @@ export const personaApi = {
 export const analyticsApi = {
   // Get overall analytics
   get: (params) => api.get('/analytics/', { params }),
+};
+
+export const authApi = {
+  login: (data) => api.post('/auth/token/', data),
+  register: (data) => api.post('/auth/register/', data),
+  registerAdmin: (data) => api.post('/auth/admin/register/', data),
 };
 
 export default api;

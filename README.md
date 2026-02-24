@@ -1,188 +1,182 @@
 # AI Blog Generator
 
-An AI-assisted blog post generator built with Django (DRF) and React. Features authentic source citations, engagement tracking, and multiple writing personas.
+AI-assisted blog generation platform built with Django (DRF) and React.
+
+Current product flow:
+- users sign up and log in,
+- authenticated users generate and manage their own blogs,
+- blogs can be shared publicly with a URL,
+- public readers can submit `Helpful` / `Not helpful` feedback,
+- owners see analytics for their own posts.
 
 ## Features
 
-- **AI-Powered Generation**: Uses Anthropic's Claude API for content generation
-- **Multiple Personas**: Technical Writer, Storyteller, Industry Analyst, Educator
-- **Authentic Sources**: Automatic citation extraction and display
-- **Engagement Tracking**: Like/dislike system for content feedback
-- **Analytics Dashboard**: Track post performance and user engagement
-- **Dark Mode**: Full dark mode support
+- AI blog generation with persona-based writing styles
+- Owner-scoped blogs (private management per user)
+- Public shared blog pages via slug URL
+- Anonymous helpfulness feedback on shared pages
+- Owner-only analytics dashboard
+- Auth pages with shared branded layout (`AuthLayout`)
+- Service-layer backend architecture (thin views, business services)
 
 ## Tech Stack
 
 ### Backend
-- Django 4.2+ with Django REST Framework
+- Django + Django REST Framework
 - PostgreSQL
-- Anthropic Claude SDK
-- Service-Oriented Architecture
+- Celery + Redis (async generation path)
+- Anthropic and/or Gemini provider integration
 
 ### Frontend
-- React 18 with Vite
+- React + Vite
 - Tailwind CSS
 - React Router
-- Axios
+- Axios (centralized API interceptor)
+
+## Application Routes
+
+### Public routes
+- `/login`
+- `/register`
+- `/share/:slug`
+
+### Protected routes (auth required)
+- `/` (blog generator)
+- `/blogs`
+- `/blog/:id`
+- `/analytics`
+
+## API Endpoints (Current)
+
+| Method | Endpoint | Description |
+|---|---|---|
+| POST | `/api/auth/register/` | User signup (`email`, `password`, `confirm_password`) |
+| POST | `/api/auth/token/` | User login (returns token + user) |
+| GET | `/api/personas/` | List active personas |
+| POST | `/api/generate/` | Generate blog (auth required) |
+| GET | `/api/generation-status/{job_id}/` | Poll async generation status (auth required) |
+| GET | `/api/posts/` | List current user's posts |
+| GET | `/api/posts/{id}/` | Get current user's post by id |
+| DELETE | `/api/posts/{id}/` | Delete current user's post |
+| GET | `/api/posts/slug/{slug}/public/` | Public shared post view |
+| POST | `/api/engage/` | Submit helpful/not-helpful feedback |
+| GET | `/api/posts/{id}/engagement/` | Get feedback metrics for a post |
+| GET | `/api/analytics/` | Owner-scoped analytics |
 
 ## Quick Start
 
-### Prerequisites
+## 1) Local (without Docker)
 
-- Python 3.11+
-- Node.js 20+
-- PostgreSQL 15+
-- Anthropic API Key
-
-### Backend Setup
-
+### Backend
 ```bash
 cd backend
-
-# Create virtual environment
 python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-
-# Install dependencies
+source venv/bin/activate  # Windows: venv\Scripts\activate
 pip install -r requirements.txt
-
-# Copy environment file
-cp .env.example .env
-# Edit .env and add your ANTHROPIC_API_KEY
-
-# Run migrations
 python manage.py migrate
-
-# Load initial personas
 python manage.py loadpersonas
-
-# Create superuser (optional)
-python manage.py createsuperuser
-
-# Run development server
 python manage.py runserver
 ```
 
-Backend will be available at `http://localhost:8000`
-
-### Frontend Setup
-
+### Frontend
 ```bash
 cd frontend
-
-# Install dependencies
 npm install
-
-# Start development server
 npm run dev
 ```
 
-Frontend will be available at `http://localhost:5173`
+Backend: `http://localhost:8000`  
+Frontend: `http://localhost:5173`
 
-### Docker Setup
+## 2) Docker Compose
 
 ```bash
-# Copy environment file
+# From repo root
 cp .env.example .env
-# Edit .env and add your ANTHROPIC_API_KEY
+# Fill required keys in .env
 
-# Start all services
 docker-compose up --build
 
-# Run migrations (first time only)
+# First-time setup
 docker-compose exec backend python manage.py migrate
-
-# Load personas
 docker-compose exec backend python manage.py loadpersonas
-```
-
-## Project Structure
-
-```
-ai-blog-generator/
-├── backend/
-│   ├── ai_blog/
-│   │   ├── settings.py
-│   │   ├── urls.py
-│   │   └── apps/
-│   │       ├── blog/           # Blog app (models, services, views)
-│   │       └── core/           # Core services (base classes, exceptions)
-│   ├── manage.py
-│   └── requirements.txt
-├── frontend/
-│   ├── src/
-│   │   ├── components/         # React components
-│   │   │   ├── ui/             # Reusable UI components
-│   │   │   ├── blog/           # Blog-specific components
-│   │   │   └── layout/         # Layout components
-│   │   ├── pages/              # Page components
-│   │   ├── hooks/              # Custom React hooks
-│   │   ├── services/           # API service
-│   │   └── contexts/           # React contexts
-│   └── package.json
-├── docker-compose.yml
-└── README.md
-```
-
-## API Endpoints
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | `/api/blog/generate/` | Generate a new blog post |
-| GET | `/api/blog/` | List all blog posts |
-| GET | `/api/blog/{id}/` | Get a single blog post |
-| DELETE | `/api/blog/{id}/` | Delete a blog post |
-| POST | `/api/engage/` | Record like/dislike |
-| GET | `/api/blog/{id}/engagement/` | Get engagement metrics |
-| GET | `/api/personas/` | List all personas |
-| GET | `/api/analytics/` | Get analytics data |
-
-## Architecture
-
-The application follows a Service-Oriented Layer (SOL) architecture:
-
-```
-Presentation Layer (React)
-    ↓ HTTP/REST
-API Gateway Layer (DRF Views)
-    ↓ Calls
-Service Layer (Business Logic)
-    ↓ Uses
-External Services (Claude API)
-    ↓ Persists
-Data Layer (PostgreSQL)
 ```
 
 ## Environment Variables
 
-| Variable | Description | Required |
-|----------|-------------|----------|
-| `ANTHROPIC_API_KEY` | Claude API key | Yes |
-| `DJANGO_SECRET_KEY` | Django secret key | Yes |
-| `DATABASE_URL` | PostgreSQL connection string | Yes |
-| `CORS_ALLOWED_ORIGINS` | Allowed frontend origins | Yes |
+Core:
+- `DJANGO_SECRET_KEY`
+- `DATABASE_URL`
+- `CORS_ALLOWED_ORIGINS`
+- `CSRF_TRUSTED_ORIGINS`
 
-## Development
+Model providers:
+- `ANTHROPIC_API_KEY` and/or `GEMINI_API_KEY`
 
-### Running Tests
+Generation mode:
+- `QUEUE_ALWAYS_SYNC` (`True` for Vercel-friendly MVP mode)
+- `QUEUE_SYNC_FALLBACK` (`True` to fallback when queue is unavailable)
+- `REDIS_URL` (required for async queue mode)
 
+Frontend:
+- `VITE_API_URL` (example: `http://localhost:8000/api`)
+- `VITE_API_TOKEN` (optional dev fallback only)
+
+## Architecture Summary
+
+Service-oriented layered architecture:
+
+1. Presentation: React pages/components/hooks/contexts
+2. API layer: DRF views + serializers
+3. Service layer: business logic (generation, engagement, auth services)
+4. Data layer: Django models + PostgreSQL
+5. External layer: AI providers and queue infrastructure
+
+Key boundary decisions:
+- Private data is enforced server-side with owner filtering.
+- Public sharing is isolated to slug endpoint and share page.
+- Anonymous feedback uses session dedupe for low-friction engagement.
+
+## Project Structure
+
+```txt
+backend/
+  ai_blog/
+    settings.py
+    urls.py
+    apps/
+      blog/
+      core/
+frontend/
+  src/
+    components/
+    contexts/
+    hooks/
+    pages/
+    services/
+docs/
+docker-compose.yml
+README.md
+```
+
+## Testing and Quality
+
+### Backend tests
 ```bash
-# Backend
 cd backend
-pytest
-
-# Frontend
-cd frontend
-npm run lint
+python manage.py test
 ```
 
-### Loading Personas
-
+### Frontend build check
 ```bash
-python manage.py loadpersonas
+cd frontend
+npm run build
 ```
 
-This loads the default personas (Technical Writer, Storyteller, Industry Analyst, Educator).
+## Documentation
+
+See `docs/` for system design materials:
+- `docs/SYSTEM_DESIGN.md`
 
 ## License
 

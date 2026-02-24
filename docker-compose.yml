@@ -17,6 +17,9 @@ services:
       timeout: 5s
       retries: 5
 
+  redis:
+    image: redis:7-alpine
+
   backend:
     build:
       context: ./backend
@@ -29,11 +32,36 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      redis:
+        condition: service_started
     environment:
       - DATABASE_URL=postgresql://postgres:postgres@db:5432/ai_blog
+      - REDIS_URL=redis://redis:6379/0
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
       - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY:-django-insecure-local-dev}
       - DJANGO_DEBUG=True
+      - ADMIN_INVITE_CODE=${ADMIN_INVITE_CODE:-local-admin-invite}
+      - CORS_ALLOWED_ORIGINS=http://localhost:5173,http://localhost:3000
+
+  worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command: celery -A ai_blog worker -l info --concurrency=1
+    volumes:
+      - ./backend:/app
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/ai_blog
+      - REDIS_URL=redis://redis:6379/0
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY:-django-insecure-local-dev}
+      - DJANGO_DEBUG=True
+      - ADMIN_INVITE_CODE=${ADMIN_INVITE_CODE:-local-admin-invite}
       - CORS_ALLOWED_ORIGINS=http://localhost:5173,http://localhost:3000
 
   frontend:

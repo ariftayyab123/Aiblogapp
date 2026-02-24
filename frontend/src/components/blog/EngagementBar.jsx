@@ -5,10 +5,16 @@ import { HandThumbUpIcon, HandThumbDownIcon } from '@heroicons/react/24/outline'
 import { HandThumbUpIcon as HandThumbUpSolid, HandThumbDownIcon as HandThumbDownSolid } from '@heroicons/react/24/solid';
 
 export default function EngagementBar({ likes, dislikes, userAction, onLike, onDislike, isLoading }) {
+  const totalReactions = (likes || 0) + (dislikes || 0);
+  const showCounts = totalReactions >= 5;
+
   return (
     <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
       <div className="text-sm text-gray-600 dark:text-gray-400">
-        Was this article helpful?
+        <p>Was this article helpful?</p>
+        {!showCounts && (
+          <p className="text-xs mt-1">Be among the first to rate this article.</p>
+        )}
       </div>
 
       <div className="flex items-center gap-3">
@@ -27,7 +33,8 @@ export default function EngagementBar({ likes, dislikes, userAction, onLike, onD
           ) : (
             <HandThumbUpIcon className="w-5 h-5" />
           )}
-          <span className="font-medium">{likes}</span>
+          <span className="font-medium">Helpful</span>
+          {showCounts && <span className="font-medium">{likes}</span>}
         </button>
 
         {/* Dislike Button */}
@@ -45,7 +52,8 @@ export default function EngagementBar({ likes, dislikes, userAction, onLike, onD
           ) : (
             <HandThumbDownIcon className="w-5 h-5" />
           )}
-          <span className="font-medium">{dislikes}</span>
+          <span className="font-medium">Not helpful</span>
+          {showCounts && <span className="font-medium">{dislikes}</span>}
         </button>
       </div>
     </div>

@@ -4,6 +4,7 @@ Implements the data schema from SYSTEM_DESIGN.md
 """
 import re
 from urllib.parse import urlparse
+from django.conf import settings
 from django.db import models
 from django.core.validators import URLValidator
 from django.contrib.postgres.fields import ArrayField
@@ -88,6 +89,11 @@ class BlogPost(BaseTimestamped):
         FAILED = 'failed', 'Failed'
 
     # Content Fields
+    owner = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='owned_blog_posts'
+    )
     title = models.CharField(
         max_length=300,
         help_text="Generated or user-provided title"
@@ -205,6 +211,11 @@ class GenerationJob(BaseTimestamped):
         FAILED = 'failed', 'Failed'
 
     topic = models.CharField(max_length=500)
+    owner = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='owned_generation_jobs'
+    )
     persona_slug = models.SlugField(max_length=50)
     session_id = models.CharField(max_length=100, blank=True)
     speed = models.CharField(max_length=10, default='fast')

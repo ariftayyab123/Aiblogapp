@@ -22,6 +22,7 @@ def generate_post_job(self, job_id: int):
         result = service.generate_post(
             topic=job.topic,
             persona_slug=job.persona_slug,
+            owner=job.owner,
             additional_context=job.additional_context or {},
             speed=job.speed or 'fast',
         )
@@ -38,4 +39,3 @@ def generate_post_job(self, job_id: int):
         job.error_message = str(exc)
         job.save(update_fields=['status', 'progress', 'error_message', 'updated_at'])
         raise
-

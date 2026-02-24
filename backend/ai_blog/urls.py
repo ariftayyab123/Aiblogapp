@@ -6,7 +6,7 @@ from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
 from rest_framework.routers import DefaultRouter
-from ai_blog.apps.core.views import TokenAuthView
+from ai_blog.apps.core.views import AdminRegisterView, RegisterView, TokenAuthView
 
 from ai_blog.apps.blog import views as blog_views
 
@@ -29,6 +29,9 @@ urlpatterns = [
     path('api/posts/<int:blog_id>/engagement/', blog_views.EngagementView.as_view(), name='blog-engagement'),
     path('api/analytics/', blog_views.AnalyticsView.as_view(), name='analytics'),
     path('api/auth/token/', TokenAuthView.as_view(), name='auth-token'),
+    path('api/auth/register/', RegisterView.as_view(), name='auth-register'),
+    path('api/auth/admin/register/', AdminRegisterView.as_view(), name='admin-register'),
+    path('api/posts/slug/<slug:slug>/public/', blog_views.PublicBlogPostBySlugView.as_view(), name='public-post-by-slug'),
 ]
 
 if settings.DEBUG:

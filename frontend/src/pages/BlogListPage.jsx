@@ -7,7 +7,8 @@ import { useState } from 'react';
 
 export default function BlogListPage() {
   const [filter, setFilter] = useState('completed');
-  const { posts, isLoading } = useBlogPosts({ status: filter });
+  const listFilters = filter === 'all' ? {} : { status: filter };
+  const { posts, isLoading } = useBlogPosts(listFilters);
 
   return (
     <div className="space-y-6">

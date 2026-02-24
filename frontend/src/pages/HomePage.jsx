@@ -7,14 +7,26 @@ export default function HomePage() {
   return (
     <div className="space-y-8">
       {/* Hero Section */}
-      <div className="text-center space-y-4">
-        <h1 className="text-4xl md:text-5xl font-bold text-gray-900 dark:text-white">
-          AI Blog Generator
-        </h1>
+      <div className="text-center space-y-5 relative overflow-hidden rounded-2xl border border-gray-200/70 dark:border-gray-700 bg-white/65 dark:bg-gray-800/60 p-8 md:p-10 backdrop-blur">
+        <div className="flex items-center justify-center gap-3">
+          <img
+            src="/ai-blog-icon.svg"
+            alt="AI Blog Generator logo"
+            className="w-12 h-12 md:w-14 md:h-14 rounded-xl shadow-sm"
+          />
+          <h1 className="text-4xl md:text-5xl font-bold text-gray-900 dark:text-white">
+            AI Blog Generator
+          </h1>
+        </div>
         <p className="text-xl text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
           Generate authentic, engaging blog posts with AI-powered writing.
           Choose your style, enter a topic, and let AI do the rest.
         </p>
+        <div className="flex justify-center">
+          <span className="inline-flex items-center rounded-full bg-primary-100 dark:bg-primary-900/30 px-3 py-1 text-sm font-medium text-primary-700 dark:text-primary-300">
+            Guided AI writing with citations and analytics
+          </span>
+        </div>
       </div>
 
       {/* Generator */}
@@ -22,7 +34,7 @@ export default function HomePage() {
 
       {/* Features */}
       <div className="grid md:grid-cols-3 gap-6 mt-12">
-        <div className="text-center p-6">
+        <div className="text-center p-6 rounded-xl border border-gray-200/80 dark:border-gray-700 bg-white/80 dark:bg-gray-800/70 shadow-sm">
           <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center mx-auto mb-3">
             <svg className="w-6 h-6 text-blue-600 dark:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -34,7 +46,7 @@ export default function HomePage() {
           </p>
         </div>
 
-        <div className="text-center p-6">
+        <div className="text-center p-6 rounded-xl border border-gray-200/80 dark:border-gray-700 bg-white/80 dark:bg-gray-800/70 shadow-sm">
           <div className="w-12 h-12 bg-green-100 dark:bg-green-900/30 rounded-lg flex items-center justify-center mx-auto mb-3">
             <svg className="w-6 h-6 text-green-600 dark:text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
@@ -42,11 +54,11 @@ export default function HomePage() {
           </div>
           <h3 className="font-semibold text-gray-900 dark:text-white mb-1">Feedback Loop</h3>
           <p className="text-sm text-gray-600 dark:text-gray-400">
-            Track engagement with likes/dislikes to improve content quality.
+            Capture reader feedback signals to improve content quality.
           </p>
         </div>
 
-        <div className="text-center p-6">
+        <div className="text-center p-6 rounded-xl border border-gray-200/80 dark:border-gray-700 bg-white/80 dark:bg-gray-800/70 shadow-sm">
           <div className="w-12 h-12 bg-purple-100 dark:bg-purple-900/30 rounded-lg flex items-center justify-center mx-auto mb-3">
             <svg className="w-6 h-6 text-purple-600 dark:text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />

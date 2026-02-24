@@ -80,6 +80,7 @@ class BlogGenerationService(BaseService[BlogPost]):
         self,
         topic: str,
         persona_slug: str,
+        owner=None,
         additional_context: Dict = None,
         stream: bool = False,
         speed: str = 'fast'
@@ -102,6 +103,11 @@ class BlogGenerationService(BaseService[BlogPost]):
         try:
             # 1. Validate inputs
             self._validate_generation_input(topic, persona_slug)
+            if owner is None:
+                raise ServiceError(
+                    "Authenticated owner is required for generation.",
+                    code="AUTH_REQUIRED"
+                )
 
             # 2. Fetch persona
             persona = self._get_persona(persona_slug)
@@ -118,7 +124,8 @@ class BlogGenerationService(BaseService[BlogPost]):
             blog_post = self._create_post_record(
                 topic=topic,
                 persona=persona,
-                raw_prompt=user_prompt
+                raw_prompt=user_prompt,
+                owner=owner,
             )
 
             # 5. Call Claude API with retry logic
@@ -281,7 +288,7 @@ class BlogGenerationService(BaseService[BlogPost]):
             return self.GEMINI_FAST_MODEL if speed == 'fast' else self.GEMINI_MODEL
         return self.DEFAULT_MODEL
 
-    def _create_post_record(self, topic: str, persona: Persona, raw_prompt: str) -> BlogPost:
+    def _create_post_record(self, topic: str, persona: Persona, raw_prompt: str, owner) -> BlogPost:
         """Create initial BlogPost in GENERATING state"""
         # Generate unique slug
         base_slug = slugify(topic[:50])
@@ -292,6 +299,7 @@ class BlogGenerationService(BaseService[BlogPost]):
             counter += 1
 
         blog_post = BlogPost.objects.create(
+            owner=owner,
             title=f"Draft: {topic[:50]}...",
             slug=slug,
             topic_input=topic,

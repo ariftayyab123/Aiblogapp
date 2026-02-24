@@ -91,17 +91,6 @@ export default function BlogViewer({ blogPost, isLoading }) {
         <SourceList sources={blogPost.sources} />
       )}
 
-      {/* Metadata (expandable) */}
-      {blogPost.metadata && Object.keys(blogPost.metadata).length > 0 && (
-        <details className="text-sm">
-          <summary className="cursor-pointer text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">
-            Generation Metadata
-          </summary>
-          <pre className="mt-2 p-4 bg-gray-100 dark:bg-gray-800 rounded-lg overflow-x-auto">
-            {JSON.stringify(blogPost.metadata, null, 2)}
-          </pre>
-        </details>
-      )}
     </article>
   );
 }

@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="AI Blog Generator logo">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#6d5ce8" />
+      <stop offset="100%" stop-color="#5c4bd1" />
+    </linearGradient>
+  </defs>
+  <rect x="24" y="24" width="208" height="208" rx="34" fill="url(#bg)" />
+
+  <rect x="60" y="66" width="86" height="108" rx="12" fill="#ffffff" />
+  <rect x="76" y="90" width="44" height="7" rx="3.5" fill="#6d5ce8" />
+  <rect x="76" y="108" width="56" height="7" rx="3.5" fill="#6d5ce8" />
+  <rect x="76" y="126" width="38" height="7" rx="3.5" fill="#6d5ce8" />
+
+  <path d="M149 83l42 42-17 5-30-30z" fill="#ffffff" />
+  <path d="M143 95l18 4-47 66-23 7 8-22z" fill="#ffffff" />
+  <path d="M85 180c8-2 16 2 20 8" stroke="#ffffff" stroke-width="6" stroke-linecap="round" fill="none" />
+
+  <text x="167" y="193" fill="#ffffff" font-size="50" font-family="Arial, sans-serif" font-weight="700">AI</text>
+</svg>

@@ -6,6 +6,7 @@ from pathlib import Path
 import dj_database_url
 from dotenv import load_dotenv
 from django.core.exceptions import ImproperlyConfigured
+from corsheaders.defaults import default_headers
 
 # Load environment variables
 load_dotenv()
@@ -130,6 +131,9 @@ CORS_ALLOWED_ORIGINS = _csv_env(
     'http://localhost:5173,http://localhost:3000'
 )
 CORS_ALLOWED_ORIGIN_REGEXES = _csv_env('CORS_ALLOWED_ORIGIN_REGEXES', '')
+CORS_ALLOW_HEADERS = list(default_headers) + [
+    'x-request-id',
+]
 
 CORS_ALLOW_CREDENTIALS = True
 
@@ -170,6 +174,7 @@ LLM_CIRCUIT_COOL_OFF_SECONDS = int(os.getenv('LLM_CIRCUIT_COOL_OFF_SECONDS', '30
 # LLM provider configuration
 LLM_PROVIDER = os.getenv('LLM_PROVIDER', 'anthropic').strip().lower()
 ADMIN_AUTH_REQUIRED = os.getenv('ADMIN_AUTH_REQUIRED', 'False').lower() == 'true'
+ADMIN_INVITE_CODE = os.getenv('ADMIN_INVITE_CODE', '')
 
 # Gemini API
 GEMINI_API_KEY = os.getenv('GEMINI_API_KEY', '')
@@ -182,6 +187,7 @@ CELERY_BROKER_URL = REDIS_URL
 CELERY_RESULT_BACKEND = REDIS_URL
 CELERY_TASK_TRACK_STARTED = True
 CELERY_TASK_TIME_LIMIT = int(os.getenv('CELERY_TASK_TIME_LIMIT', '300'))
+QUEUE_ALWAYS_SYNC = os.getenv('QUEUE_ALWAYS_SYNC', 'False').lower() == 'true'
 QUEUE_SYNC_FALLBACK = os.getenv('QUEUE_SYNC_FALLBACK', str(DEBUG)).lower() == 'true'
 CACHE_TTL_SECONDS = int(os.getenv('CACHE_TTL_SECONDS', '60'))
 

@@ -12,6 +12,7 @@ from ai_blog.apps.blog.tasks import generate_post_job
 class GenerationApiTests(TestCase):
     def setUp(self):
         self.client = APIClient()
+        self.user = get_user_model().objects.create_user('user@test.com', 'user@test.com', 'pass1234')
         self.persona = Persona.objects.create(
             name='Technical Writer',
             slug='technical',
@@ -20,9 +21,10 @@ class GenerationApiTests(TestCase):
             description='Technical persona',
         )
 
-    @override_settings(ADMIN_AUTH_REQUIRED=False)
     @patch('ai_blog.apps.blog.views.generate_post_job.delay')
     def test_generate_returns_queued_job(self, mock_delay):
+        token, _ = Token.objects.get_or_create(user=self.user)
+        self.client.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
         mock_delay.return_value = Mock(id='task-123')
         response = self.client.post(
             '/api/generate/',
@@ -34,7 +36,6 @@ class GenerationApiTests(TestCase):
         self.assertIn('job_id', response.data)
         self.assertTrue(GenerationJob.objects.filter(id=response.data['job_id']).exists())
 
-    @override_settings(ADMIN_AUTH_REQUIRED=True)
     def test_generate_requires_admin_when_enabled(self):
         response = self.client.post(
             '/api/generate/',
@@ -43,13 +44,9 @@ class GenerationApiTests(TestCase):
         )
         self.assertEqual(response.status_code, 401)
 
-    @override_settings(ADMIN_AUTH_REQUIRED=True)
     @patch('ai_blog.apps.blog.views.generate_post_job.delay')
-    def test_generate_allows_admin_token(self, mock_delay):
-        user = get_user_model().objects.create_user('admin', 'admin@test.com', 'pass')
-        user.is_staff = True
-        user.save(update_fields=['is_staff'])
-        token, _ = Token.objects.get_or_create(user=user)
+    def test_generate_allows_authenticated_user_token(self, mock_delay):
+        token, _ = Token.objects.get_or_create(user=self.user)
         self.client.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
         mock_delay.return_value = Mock(id='task-123')
         response = self.client.post(
@@ -59,10 +56,10 @@ class GenerationApiTests(TestCase):
         )
         self.assertEqual(response.status_code, 202)
 
-    @override_settings(ADMIN_AUTH_REQUIRED=False)
     @patch('ai_blog.apps.blog.services.generation.BlogGenerationService.generate_post')
     def test_generation_task_transitions_to_completed(self, mock_generate):
         post = BlogPost.objects.create(
+            owner=self.user,
             title='Draft',
             slug='draft-task',
             topic_input='Future of AI',
@@ -73,6 +70,7 @@ class GenerationApiTests(TestCase):
         mock_generate.return_value = {'blog_post_id': post.id}
         job = GenerationJob.objects.create(
             topic='Future of AI',
+            owner=self.user,
             persona_slug='technical',
             speed='fast',
             status=GenerationJob.JobStatus.QUEUED,
@@ -87,6 +85,7 @@ class GenerationApiTests(TestCase):
 class EngagementIntegrityTests(TestCase):
     def setUp(self):
         self.client = APIClient()
+        self.user = get_user_model().objects.create_user('user2@test.com', 'user2@test.com', 'pass1234')
         self.persona = Persona.objects.create(
             name='Technical Writer',
             slug='technical',
@@ -95,6 +94,7 @@ class EngagementIntegrityTests(TestCase):
             description='Technical persona',
         )
         self.post = BlogPost.objects.create(
+            owner=self.user,
             title='Draft',
             slug='draft-engagement',
             topic_input='Future of AI',
@@ -113,3 +113,14 @@ class EngagementIntegrityTests(TestCase):
 
         self.assertEqual(Engagement.objects.filter(blog_post=self.post, session_id='session-1').count(), 1)
         self.assertEqual(Engagement.objects.get(blog_post=self.post, session_id='session-1').action, 'dislike')
+
+    def test_public_slug_endpoint_returns_completed_post(self):
+        response = self.client.get(f'/api/posts/slug/{self.post.slug}/public/')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['slug'], self.post.slug)
+
+    def test_public_slug_endpoint_hides_non_completed_post(self):
+        self.post.status = BlogPost.PostStatus.DRAFT
+        self.post.save(update_fields=['status'])
+        response = self.client.get(f'/api/posts/slug/{self.post.slug}/public/')
+        self.assertEqual(response.status_code, 404)

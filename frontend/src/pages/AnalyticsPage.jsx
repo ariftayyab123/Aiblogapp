@@ -19,25 +19,29 @@ function AnalyticsPage() {
   const [data, setData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
-  const [sortBy, setSortBy] = useState('total_reactions');
+  const [sortBy, setSortBy] = useState('recent');
   const [sortOrder, setSortOrder] = useState('desc');
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
+  const [refreshNonce, setRefreshNonce] = useState(0);
 
   useEffect(() => {
     const fetchAnalytics = async () => {
       try {
+        const sortParamMap = {
+          recent: 'sentiment',
+          helpful: 'likes',
+          needs_improvement: 'dislikes',
+          helpfulness_score: 'sentiment',
+        };
+
         const response = await analyticsApi.get({
-          sort:
-            sortBy === 'total_reactions'
-              ? 'reactions'
-              : sortBy === 'sentiment_score'
-                ? 'sentiment'
-                : sortBy,
+          sort: sortParamMap[sortBy] || 'sentiment',
           order: sortOrder,
           limit: 20,
           from: fromDate || undefined,
           to: toDate || undefined,
+          refresh: refreshNonce || undefined,
         });
         setData(response.data);
         setLoadError('');
@@ -50,7 +54,7 @@ function AnalyticsPage() {
     };
 
     fetchAnalytics();
-  }, [sortBy, sortOrder, fromDate, toDate]);
+  }, [sortBy, sortOrder, fromDate, toDate, refreshNonce]);
 
   const stats = data || {
     total_posts: 0,
@@ -68,9 +72,24 @@ function AnalyticsPage() {
 
   const sortedPosts = useMemo(() => {
     const posts = [...(stats.top_posts || [])];
+    const sortKeyMap = {
+      recent: 'created_at',
+      helpful: 'likes',
+      needs_improvement: 'dislikes',
+      helpfulness_score: 'sentiment_score',
+    };
+
+    const sortKey = sortKeyMap[sortBy] || 'created_at';
+
     posts.sort((a, b) => {
-      const left = Number(a[sortBy] ?? 0);
-      const right = Number(b[sortBy] ?? 0);
+      if (sortKey === 'created_at') {
+        const left = new Date(a.created_at || 0).getTime() || 0;
+        const right = new Date(b.created_at || 0).getTime() || 0;
+        return sortOrder === 'asc' ? left - right : right - left;
+      }
+
+      const left = Number(a[sortKey] ?? 0);
+      const right = Number(b[sortKey] ?? 0);
       return sortOrder === 'asc' ? left - right : right - left;
     });
     return posts;
@@ -99,11 +118,11 @@ function AnalyticsPage() {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4 md:gap-6">
         <StatCard title="Total Posts" value={stats.total_posts} icon={DocumentTextIcon} color="blue" />
-        <StatCard title="Total Likes" value={stats.total_likes} icon={HeartIcon} color="green" />
-        <StatCard title="Total Dislikes" value={stats.total_dislikes} icon={HandThumbDownIcon} color="red" />
-        <StatCard title="Reaction Rate" value={stats.reaction_rate} icon={UserGroupIcon} color="indigo" />
+        <StatCard title="Total Helpful" value={stats.total_likes} icon={HeartIcon} color="green" />
+        <StatCard title="Total Needs Improvement" value={stats.total_dislikes} icon={HandThumbDownIcon} color="red" />
+        <StatCard title="Feedback Rate" value={stats.reaction_rate} icon={UserGroupIcon} color="indigo" />
         <StatCard
-          title="Avg Sentiment"
+          title="Helpfulness Score"
           value={avgSentiment.toFixed(1)}
           icon={ArrowTrendingUpIcon}
           color="orange"
@@ -116,15 +135,21 @@ function AnalyticsPage() {
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
               <CardTitle>Top Performing Posts</CardTitle>
               <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setRefreshNonce(Date.now())}
+                  className="px-3 py-2 text-sm rounded-md border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700"
+                >
+                  Refresh
+                </button>
                 <select
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value)}
                   className="px-3 py-2 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm"
                 >
-                  <option value="total_reactions">Sort: Reactions</option>
-                  <option value="likes">Sort: Likes</option>
-                  <option value="dislikes">Sort: Dislikes</option>
-                  <option value="sentiment_score">Sort: Sentiment</option>
+                  <option value="recent">Sort: Recent</option>
+                  <option value="helpful">Sort: Helpful</option>
+                  <option value="needs_improvement">Sort: Needs Improvement</option>
+                  <option value="helpfulness_score">Sort: Helpfulness Score</option>
                 </select>
                 <button
                   onClick={() => setSortOrder((prev) => (prev === 'desc' ? 'asc' : 'desc'))}
@@ -158,13 +183,13 @@ function AnalyticsPage() {
 
                       <div className="mt-3 space-y-2">
                         <MetricBar
-                          label="Likes"
+                          label="Helpful"
                           value={post.likes || 0}
                           max={maxReactions}
                           color="bg-green-500"
                         />
                         <MetricBar
-                          label="Dislikes"
+                          label="Needs imp."
                           value={post.dislikes || 0}
                           max={maxReactions}
                           color="bg-red-500"
@@ -181,9 +206,9 @@ function AnalyticsPage() {
                         {post.sentiment_score > 0 ? '+' : ''}
                         {post.sentiment_score}
                       </div>
-                      <div className="text-xs text-gray-500">sentiment</div>
+                      <div className="text-xs text-gray-500">score</div>
                       <div className="mt-2 text-sm font-medium text-gray-800 dark:text-gray-200">
-                        {post.total_reactions || 0} reactions
+                        {post.total_reactions || 0} feedback responses
                       </div>
                     </div>
                   </div>

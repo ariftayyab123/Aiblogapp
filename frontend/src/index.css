@@ -3,23 +3,42 @@
 @tailwind utilities;
 
 @layer base {
+  :root {
+    --brand-500: #5c4bd1;
+    --brand-600: #4e3fc2;
+    --brand-700: #3f33ab;
+    --surface-soft: #f5f7fb;
+  }
+
   body {
-    @apply min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100;
+    @apply min-h-screen text-gray-900 dark:text-gray-100;
+    background:
+      radial-gradient(1200px 500px at 10% -10%, rgba(92, 75, 209, 0.12), transparent 55%),
+      radial-gradient(900px 420px at 95% 0%, rgba(14, 165, 233, 0.10), transparent 60%),
+      var(--surface-soft);
+  }
+
+  .dark body {
+    background:
+      radial-gradient(1200px 500px at 10% -10%, rgba(92, 75, 209, 0.20), transparent 55%),
+      radial-gradient(900px 420px at 95% 0%, rgba(14, 165, 233, 0.16), transparent 60%),
+      #111827;
   }
 }
 
 @layer components {
   /* Custom button styles */
   .btn {
-    @apply px-4 py-2 rounded-lg font-medium transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply px-4 py-2 rounded-lg font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed;
   }
 
   .btn-primary {
-    @apply bg-primary-600 text-white hover:bg-primary-700 focus:ring-2 focus:ring-primary-500 focus:ring-offset-2;
+    @apply text-white focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 shadow-sm hover:shadow-md active:scale-[0.99];
+    background-image: linear-gradient(135deg, var(--brand-500), var(--brand-700));
   }
 
   .btn-secondary {
-    @apply bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600;
+    @apply bg-white text-gray-700 border border-gray-200 hover:bg-gray-50 dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600 dark:hover:bg-gray-600;
   }
 
   .btn-outline {
@@ -32,7 +51,7 @@
 
   /* Card styles */
   .card {
-    @apply bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700;
+    @apply bg-white/90 dark:bg-gray-800/90 backdrop-blur rounded-xl shadow-sm border border-gray-200/80 dark:border-gray-700 transition-shadow duration-200 hover:shadow-md;
   }
 
   /* Input styles */
