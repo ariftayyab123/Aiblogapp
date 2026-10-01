@@ -68,6 +68,30 @@ export function useBlogPosts(filters = {}) {
 }
 
 /**
+ * Hook for editing a single blog post.
+ */
+export function useEditBlogPost() {
+  const { success, error } = useToast();
+  const [isSaving, setIsSaving] = useState(false);
+
+  const savePost = useCallback(async (postId, data) => {
+    setIsSaving(true);
+    try {
+      const response = await blogApi.update(postId, data);
+      success('Blog post updated');
+      return response.data;
+    } catch (err) {
+      error(err?.message || 'Failed to update blog post');
+      return null;
+    } finally {
+      setIsSaving(false);
+    }
+  }, [success, error]);
+
+  return { isSaving, savePost };
+}
+
+/**
  * Hook for fetching a single blog post.
  */
 export function useBlogPost(postId) {
@@ -119,5 +143,6 @@ export function useBlogPost(postId) {
   return {
     ...state,
     fetchPost,
+    updatePost: (updates) => setState(prev => ({ ...prev, post: { ...(prev.post || {}), ...updates } })),
   };
 }

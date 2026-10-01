@@ -2,6 +2,7 @@
 Django settings for AI Blog Generator project.
 """
 import os
+import sys
 from pathlib import Path
 import dj_database_url
 from dotenv import load_dotenv
@@ -14,20 +15,32 @@ load_dotenv()
 # Build paths
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'django-insecure-change-this-in-production')
+# Debug is opt-in: an unconfigured deploy must not leak tracebacks and settings.
+DEBUG = os.getenv('DJANGO_DEBUG', 'False').lower() == 'true'
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.getenv('DJANGO_DEBUG', 'True').lower() == 'true'
+# The Django test client speaks plain HTTP. Without this flag, SECURE_SSL_REDIRECT
+# below would turn every test request into a 301 before the view is reached, so
+# the suite can only run with DEBUG=True - which is not how CI should run it.
+TESTING = 'test' in sys.argv[1:2] or os.getenv('DJANGO_TESTING', 'False').lower() == 'true'
 
-if not DEBUG and SECRET_KEY == 'django-insecure-change-this-in-production':
-    raise ImproperlyConfigured(
-        'DJANGO_SECRET_KEY must be configured when DJANGO_DEBUG=False'
-    )
+
+def _bool_env(var_name: str, default: bool) -> bool:
+    return os.getenv(var_name, str(default)).strip().lower() == 'true'
+
 
 def _csv_env(var_name: str, default: str = ''):
     value = os.getenv(var_name, default)
     return [item.strip() for item in value.split(',') if item.strip()]
+
+
+# SECURITY WARNING: keep the secret key used in production secret!
+SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', '')
+if not SECRET_KEY:
+    if not DEBUG:
+        raise ImproperlyConfigured(
+            'DJANGO_SECRET_KEY must be set when DJANGO_DEBUG is not True.'
+        )
+    SECRET_KEY = 'django-insecure-local-development-only'
 
 
 ALLOWED_HOSTS = _csv_env('ALLOWED_HOSTS', 'localhost,127.0.0.1')
@@ -103,8 +116,28 @@ else:
         }
     }
 
-SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
-USE_X_FORWARDED_HOST = True
+# Security hardening. The proxy SSL header is only trusted when the deployment
+# actually sits behind a TLS-terminating proxy - trusting it otherwise lets a
+# client fake HTTPS with a header.
+TRUST_PROXY_SSL_HEADER = _bool_env('TRUST_PROXY_SSL_HEADER', not DEBUG)
+if TRUST_PROXY_SSL_HEADER:
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    USE_X_FORWARDED_HOST = True
+
+if not DEBUG:
+    SECURE_SSL_REDIRECT = _bool_env('SECURE_SSL_REDIRECT', True) and not TESTING
+    # Liveness/readiness probes are internal and may arrive over plain HTTP; a
+    # 301 there reads as an unhealthy deploy. They expose no data beyond status.
+    SECURE_REDIRECT_EXEMPT = [r'^health/live$', r'^health/ready$']
+    SECURE_HSTS_SECONDS = int(os.getenv('SECURE_HSTS_SECONDS', '31536000'))
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SESSION_COOKIE_HTTPONLY = True
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    SECURE_REFERRER_POLICY = 'same-origin'
+    X_FRAME_OPTIONS = 'DENY'
 
 # Custom primary key type
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
@@ -123,12 +156,37 @@ REST_FRAMEWORK = {
         'rest_framework.authentication.TokenAuthentication',
         'rest_framework.authentication.SessionAuthentication',
     ],
+    # Fail closed: a view that forgets to declare permissions requires auth
+    # instead of being silently public. Public endpoints opt in with AllowAny.
     'DEFAULT_PERMISSION_CLASSES': [
-        'rest_framework.permissions.AllowAny',
+        'rest_framework.permissions.IsAuthenticated',
     ],
+    'DEFAULT_THROTTLE_CLASSES': [
+        'rest_framework.throttling.AnonRateThrottle',
+        'rest_framework.throttling.UserRateThrottle',
+    ],
+    'DEFAULT_THROTTLE_RATES': {
+        'anon': os.getenv('THROTTLE_ANON', '120/min'),
+        'user': os.getenv('THROTTLE_USER', '600/min'),
+        # Every generate call spends money at the LLM provider.
+        'generate': os.getenv('THROTTLE_GENERATE', '10/min'),
+        'engage': os.getenv('THROTTLE_ENGAGE', '30/min'),
+        'auth': os.getenv('THROTTLE_AUTH', '10/min'),
+    },
     'EXCEPTION_HANDLER': 'ai_blog.apps.core.exceptions.custom_exception_handler',
-    'DEFAULT_SCHEMA_CLASS': 'rest_framework.schemas.coreapi.AutoSchema',
 }
+
+# Password strength. Without this, django.contrib.auth.password_validation
+# .validate_password() (used by the registration services) is a silent no-op.
+AUTH_PASSWORD_VALIDATORS = [
+    {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
+    {
+        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
+        'OPTIONS': {'min_length': 10},
+    },
+    {'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
+]
 
 # CORS settings
 CORS_ALLOWED_ORIGINS = _csv_env(
@@ -155,9 +213,6 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'
 # Media files
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
-
-# Default primary key field type
-DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # LLM provider configuration. Provider API keys never leave the backend.
 LLM_PROVIDER = os.getenv('LLM_PROVIDER', 'anthropic').strip().lower()
@@ -203,7 +258,10 @@ QUEUE_ALWAYS_SYNC = os.getenv('QUEUE_ALWAYS_SYNC', 'False').lower() == 'true'
 QUEUE_SYNC_FALLBACK = os.getenv('QUEUE_SYNC_FALLBACK', str(DEBUG)).lower() == 'true'
 CACHE_TTL_SECONDS = int(os.getenv('CACHE_TTL_SECONDS', '60'))
 
-CACHE_URL = os.getenv('CACHE_URL', REDIS_URL if not DEBUG else '')
+# LocMemCache is per-process, so throttle counters and cached responses are not
+# shared between gunicorn workers. Set CACHE_URL (redis://...) in production to
+# get a single shared cache; local dev falls back to in-memory.
+CACHE_URL = os.getenv('CACHE_URL', '')
 if CACHE_URL:
     CACHES = {
         'default': {

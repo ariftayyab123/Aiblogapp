@@ -71,7 +71,7 @@ flowchart LR
 1. An account owner enters a topic, chooses a writing persona, and selects brief or detailed generation.
 2. Django builds the prompt and sends it through the configured LLM adapter.
 3. The result is parsed into Markdown, source references, structural metadata, and a persisted post.
-4. The owner can review the post, copy its public link, or delete it.
+4. The owner can review and edit the post, copy its public link, or delete it.
 5. Public readers can submit one reaction per browser session and post.
 6. The owner sees aggregated feedback and post rankings in the analytics dashboard.
 
@@ -83,7 +83,7 @@ flowchart LR
 - Brief and detailed generation modes with separate word and token budgets.
 - Markdown rendering, extracted headings, word count, estimated reading time, and structured source metadata.
 - Queue status polling with progress, timeout handling, cancellation of client polling, and retry support.
-- Owner-scoped post lists, detail pages, filtering, and confirmed deletion.
+- Owner-scoped post lists, detail pages, filtering, inline Markdown editing, and confirmed deletion.
 
 ### Distribution and feedback
 
@@ -120,7 +120,7 @@ Source references are extracted from model output and currently start as unverif
 
 | User group | Access |
 |---|---|
-| Account owner | Generate content, list and view owned posts, delete owned posts, copy share links, and view owned analytics |
+| Account owner | Generate content, list, view and edit owned posts, delete owned posts, copy share links, and view owned analytics |
 | Public reader | Read completed posts by slug and submit anonymous feedback |
 | Operator / Django administrator | Configure infrastructure and providers, seed personas, inspect administrative records, and monitor services |
 
@@ -322,6 +322,7 @@ Use the tracked [root](.env.example), [backend](backend/.env.example), and [fron
 | `GET` | `/api/generation-status/{job_id}/` | Owner | Poll generation progress |
 | `GET` | `/api/posts/` | Owner | List owned posts |
 | `GET` | `/api/posts/{id}/` | Owner | Read an owned post |
+| `PATCH` | `/api/posts/{id}/` | Owner | Update an owned post's title, topic, content, or draft/completed status |
 | `DELETE` | `/api/posts/{id}/` | Owner | Delete an owned post |
 | `GET` | `/api/posts/slug/{slug}/public/` | Public | Read a completed post by slug |
 | `POST` | `/api/engage/` | Public | Record or replace a reader reaction |
@@ -345,7 +346,7 @@ npm run lint
 npm run build
 ```
 
-The GitHub Actions workflow runs Django configuration/migration checks plus frontend lint and build. It does not currently run the PostgreSQL-backed backend test suite.
+The GitHub Actions workflow provisions PostgreSQL and Redis, runs Django configuration and migration checks, executes the backend test suite, and validates frontend lint and production build.
 
 ## Repository map
 
@@ -382,14 +383,12 @@ The GitHub Actions workflow runs Django configuration/migration checks plus fron
 
 These limitations are important when evaluating or operating the project:
 
-- Editing generated Markdown is not implemented in the current checkout; owners can view, share, filter, and delete posts.
 - Every completed post is retrievable through its slug endpoint. There is no per-post publish toggle, expiry, password, or revocation control.
 - Generated citations are model output and are not automatically retrieved or verified.
 - Reader identity is a browser-generated session identifier, so feedback deduplication is useful but not fraud-resistant.
 - Frontend route IDs are obfuscated, not secured; backend ownership checks provide authorization.
 - Token authentication has no expiry or refresh flow.
 - Client-side cancellation stops polling but does not revoke a running backend task.
-- The production bundle currently warrants additional route-level code splitting as the interface grows.
 
 ## Contributing and safe changes
 

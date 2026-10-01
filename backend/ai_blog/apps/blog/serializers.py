@@ -1,7 +1,10 @@
 """
 DRF Serializers for AI Blog Generator.
 """
+from django.utils import timezone
 from rest_framework import serializers
+
+from .content import compute_content_structure, reading_time_minutes
 from .models import BlogPost, Persona, Engagement, PostMetric, SourceReference, GenerationJob
 
 
@@ -62,12 +65,73 @@ class BlogPostSerializer(serializers.ModelSerializer):
         ]
 
 
+class BlogPostUpdateSerializer(serializers.ModelSerializer):
+    """Serializer for updating a blog post's editable fields."""
+
+    # Only these two are reachable by an editor. 'generating' and 'failed' are
+    # owned by the generation pipeline and must not be settable from the API.
+    EDITABLE_STATUSES = (BlogPost.PostStatus.DRAFT, BlogPost.PostStatus.COMPLETED)
+
+    status = serializers.ChoiceField(choices=EDITABLE_STATUSES, required=False)
+
+    class Meta:
+        model = BlogPost
+        fields = [
+            'id', 'title', 'topic_input', 'generated_content', 'status',
+            'word_count', 'reading_time', 'published_at', 'updated_at'
+        ]
+        read_only_fields = ['id', 'word_count', 'reading_time', 'published_at', 'updated_at']
+
+    def validate(self, attrs):
+        """Publishing requires actual content - an empty post cannot go public."""
+        new_status = attrs.get('status')
+        if new_status == BlogPost.PostStatus.COMPLETED:
+            content = attrs.get(
+                'generated_content',
+                self.instance.generated_content if self.instance else ''
+            )
+            if not (content or '').strip():
+                raise serializers.ValidationError({
+                    'status': 'A post with no content cannot be published.'
+                })
+        return attrs
+
+    def update(self, instance, validated_data):
+        updated_fields = ['updated_at']
+
+        for field in ('title', 'topic_input'):
+            if field in validated_data:
+                setattr(instance, field, validated_data[field])
+                updated_fields.append(field)
+
+        if 'generated_content' in validated_data:
+            instance.generated_content = validated_data['generated_content']
+            instance.content_structure = compute_content_structure(instance.generated_content)
+            updated_fields += ['generated_content', 'content_structure']
+
+        if 'status' in validated_data:
+            new_status = validated_data['status']
+            if new_status != instance.status:
+                instance.status = new_status
+                updated_fields.append('status')
+                # Keep published_at consistent with the published state.
+                if new_status == BlogPost.PostStatus.COMPLETED and instance.published_at is None:
+                    instance.published_at = timezone.now()
+                    updated_fields.append('published_at')
+                elif new_status == BlogPost.PostStatus.DRAFT:
+                    instance.published_at = None
+                    updated_fields.append('published_at')
+
+        instance.save(update_fields=updated_fields)
+        return instance
+
+
 class BlogPostListSerializer(serializers.ModelSerializer):
     """Lightweight serializer for listing posts"""
 
     persona = serializers.StringRelatedField()
-    word_count = serializers.ReadOnlyField()
-    reading_time = serializers.ReadOnlyField()
+    word_count = serializers.SerializerMethodField()
+    reading_time = serializers.SerializerMethodField()
 
     class Meta:
         model = BlogPost
@@ -75,6 +139,18 @@ class BlogPostListSerializer(serializers.ModelSerializer):
             'id', 'title', 'slug', 'status', 'sentiment_score',
             'persona', 'word_count', 'reading_time', 'created_at'
         ]
+
+    # Read the stored structure instead of the model properties, which would
+    # split the full markdown body twice per row for a payload that never
+    # includes that body.
+    def get_word_count(self, obj) -> int:
+        return (obj.content_structure or {}).get('word_count', 0)
+
+    def get_reading_time(self, obj) -> int:
+        structure = obj.content_structure or {}
+        if structure.get('reading_time_minutes'):
+            return structure['reading_time_minutes']
+        return reading_time_minutes(structure.get('word_count', 0))
 
 
 class BlogPostDetailSerializer(serializers.ModelSerializer):

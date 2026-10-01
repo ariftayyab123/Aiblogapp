@@ -3,7 +3,7 @@
 ## 1) Product Goal
 Build a user-owned AI blog platform where:
 - users sign up and log in,
-- authenticated users generate and manage their own blogs,
+- authenticated users generate, edit, and manage their own blogs,
 - each blog can be shared publicly via slug URL,
 - public readers can submit `Helpful` / `Not helpful` feedback,
 - owners see feedback analytics for only their own blogs.
@@ -62,8 +62,8 @@ Environment usage:
 4. On completion, blog is persisted with `owner=request.user`.
 
 ### C. Ownership and private data flow
-- `GET /api/posts/`, `GET /api/posts/:id/`, and `DELETE /api/posts/:id/` are owner-scoped.
-- Users cannot read/delete other users' private posts through internal APIs.
+- `GET /api/posts/`, `GET/PATCH /api/posts/:id/`, and `DELETE /api/posts/:id/` are owner-scoped.
+- Users cannot read, edit, or delete other users' private posts through internal APIs.
 
 ### D. Public sharing flow
 1. Owner copies share URL: `/share/:slug`.

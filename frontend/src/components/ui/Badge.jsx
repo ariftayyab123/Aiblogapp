@@ -1,19 +1,22 @@
 /**
  * Badge component for status indicators.
+ *
+ * The editorial system marks status with a small dot beside its text label
+ * rather than a coloured pill, so colour is never the only signal. Pass
+ * `dot={false}` for plain metadata (a persona name, a word count).
  */
-const badgeStyles = {
-  gray: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300',
-  green: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
-  red: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
-  blue: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400',
-  yellow: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400',
+const dotStyles = {
+  gray: 'bg-ink-400',
+  green: 'bg-emerald-500',
+  red: 'bg-red-600',
+  blue: 'bg-sky-500',
+  yellow: 'bg-amber-500',
 };
 
-export function Badge({ children, variant = 'gray', className = '' }) {
+export function Badge({ children, variant = 'gray', dot = true, className = '' }) {
   return (
-    <span
-      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${badgeStyles[variant]} ${className}`}
-    >
+    <span className={`chip ${className}`}>
+      {dot && <span className={`status-dot ${dotStyles[variant] || dotStyles.gray}`} aria-hidden="true" />}
       {children}
     </span>
   );

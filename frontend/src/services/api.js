@@ -69,6 +69,9 @@ export const blogApi = {
   // Get a single blog post
   get: (id) => api.get(`/posts/${id}/`),
 
+  // Update a blog post (title, topic, content)
+  update: (id, data) => api.patch(`/posts/${id}/`, data),
+
   // Get public blog post by slug
   getPublicBySlug: (slug) => api.get(`/posts/slug/${slug}/public/`),
 

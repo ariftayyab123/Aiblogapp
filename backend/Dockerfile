@@ -22,5 +22,6 @@ COPY . .
 # Expose port
 EXPOSE 8000
 
-# Default command
-CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
+# Production server. runserver is a development server and must not serve
+# traffic; override the command locally if you want autoreload.
+CMD ["sh", "-c", "gunicorn ai_blog.wsgi:application --bind 0.0.0.0:${PORT:-8000} --workers ${WEB_CONCURRENCY:-3} --timeout 120"]

@@ -41,14 +41,21 @@ export function ToastProvider({ children }) {
   return (
     <ToastContext.Provider value={{ addToast, removeToast, success, error, info, warning }}>
       {children}
-      <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 flex flex-col gap-2 w-full max-w-md px-4">
+      {/* Live region so screen readers announce toasts; pointer-events are off
+          on the container so it never swallows clicks on the page beneath. */}
+      <div
+        aria-live="polite"
+        aria-atomic="false"
+        className="fixed top-4 left-1/2 z-toast flex w-full max-w-md -translate-x-1/2 flex-col gap-2 px-4 pointer-events-none"
+      >
         {toasts.map(toast => (
-          <Toast
-            key={toast.id}
-            message={toast.message}
-            type={toast.type}
-            onClose={() => removeToast(toast.id)}
-          />
+          <div key={toast.id} className="pointer-events-auto">
+            <Toast
+              message={toast.message}
+              type={toast.type}
+              onClose={() => removeToast(toast.id)}
+            />
+          </div>
         ))}
       </div>
     </ToastContext.Provider>

@@ -4,10 +4,11 @@
 import { forwardRef } from 'react';
 
 const buttonStyles = {
-  primary: 'btn-primary',
-  secondary: 'btn-secondary',
-  outline: 'btn-outline',
-  ghost: 'btn-ghost',
+  ink: 'btn-ink',
+  accent: 'btn-accent',
+  quiet: 'btn-quiet',
+  danger: 'btn-danger',
+  'danger-quiet': 'btn-danger-quiet',
 };
 
 const buttonSizes = {
@@ -19,7 +20,7 @@ const buttonSizes = {
 export const Button = forwardRef(
   (
     {
-      variant = 'primary',
+      variant = 'ink',
       size = 'md',
       isLoading = false,
       disabled,
@@ -33,14 +34,14 @@ export const Button = forwardRef(
       <button
         ref={ref}
         disabled={disabled || isLoading}
-        className={`btn ${buttonStyles[variant]} ${buttonSizes[size]} ${
-          isLoading ? 'cursor-wait' : ''
-        } ${className}`}
+        className={`btn inline-flex items-center justify-center gap-2 ${
+          buttonStyles[variant] || buttonStyles.ink
+        } ${buttonSizes[size]} ${isLoading ? 'cursor-wait' : ''} ${className}`}
         {...props}
       >
         {isLoading ? (
-          <span className="flex items-center gap-2">
-            <svg className="w-4 h-4 spinner" fill="none" viewBox="0 0 24 24">
+          <>
+            <svg className="spinner h-4 w-4" fill="none" viewBox="0 0 24 24" aria-hidden="true">
               <circle
                 className="opacity-25"
                 cx="12"
@@ -56,7 +57,7 @@ export const Button = forwardRef(
               />
             </svg>
             {children}
-          </span>
+          </>
         ) : (
           children
         )}

@@ -30,51 +30,62 @@ export default function LoginPage() {
 
   return (
     <AuthLayout
-      heroTitle="Empowering Blog Writing Through AI"
-      heroDescription="Generate authentic, engaging blog posts with AI-powered writing. Choose your style, enter a topic, and let AI do the rest."
+      heroTitle="Where your drafts live"
+      heroDescription="Your posts, their sources, your share links and reader numbers — all kept together under your account."
       featurePoints={[
-        'Secure account-based blog ownership',
-        'Public share links with helpful feedback tracking',
+        'Every post stays private to your account until you choose to share it.',
+        'Public share links report real reader feedback back to you.',
       ]}
-      formTitle="Sign in to your account"
-      formDescription="Login to generate blogs, manage posts, and track analytics."
+      formTitle="Sign in"
+      formDescription="Use the email and password tied to your account."
       footer={(
         <>
-          New user?{' '}
-          <Link to="/register" className="text-primary-300 hover:text-primary-200 hover:underline">
-            Create account
+          New here?{' '}
+          <Link to="/register" className="link-editorial">
+            Create an account
           </Link>
         </>
       )}
     >
       <form onSubmit={onSubmit} className="mt-8 space-y-5">
         <div>
-          <label className="block text-sm font-semibold text-primary-100 mb-2">Email address</label>
+          <label htmlFor="login-email" className="field-label">
+            Email address
+          </label>
           <input
+            id="login-email"
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
             autoComplete="email"
             placeholder="you@example.com"
-            className="w-full rounded-2xl border border-white/20 bg-white/10 px-4 py-3 text-white placeholder:text-primary-100/50 focus:outline-none focus:ring-2 focus:ring-primary-300"
+            className="input-editorial"
           />
         </div>
 
         <div>
-          <label className="block text-sm font-semibold text-primary-100 mb-2">Password</label>
+          <label htmlFor="login-password" className="field-label">
+            Password
+          </label>
           <input
+            id="login-password"
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
             autoComplete="current-password"
             placeholder="Enter your password"
-            className="w-full rounded-2xl border border-white/20 bg-white/10 px-4 py-3 text-white placeholder:text-primary-100/50 focus:outline-none focus:ring-2 focus:ring-primary-300"
+            className="input-editorial"
           />
         </div>
 
-        <Button type="submit" isLoading={isSubmitting} className="w-full rounded-2xl py-3 text-lg">
+        <Button
+          type="submit"
+          variant="ink"
+          isLoading={isSubmitting}
+          className="w-full justify-center py-3"
+        >
           Sign in
         </Button>
       </form>
