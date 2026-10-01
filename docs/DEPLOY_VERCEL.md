@@ -54,9 +54,6 @@ Frontend routing rewrite already exists:
 ### Required frontend env vars
 - `VITE_API_URL=https://<your-backend-domain>.vercel.app/api`
 
-Optional:
-- `VITE_API_TOKEN` (dev-only fallback; not required for normal user auth flow)
-
 ## 3) Verify Production Flow
 1. Open frontend URL.
 2. Register user at `/register`.

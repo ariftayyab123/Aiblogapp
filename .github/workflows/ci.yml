@@ -28,7 +28,7 @@ jobs:
           DB_PORT: "5432"
           LLM_PROVIDER: anthropic
           ANTHROPIC_API_KEY: ci-placeholder
-          CLAUDE_MODEL: claude-sonnet-4-6
+          ANTHROPIC_MODEL: claude-sonnet-4-6
           REDIS_URL: redis://localhost:6379/0
         run: |
           cd backend
@@ -54,4 +54,3 @@ jobs:
         run: |
           cd frontend
           npm run build
-

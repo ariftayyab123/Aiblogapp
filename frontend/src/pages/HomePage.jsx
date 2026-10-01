@@ -42,7 +42,7 @@ export default function HomePage() {
           </div>
           <h3 className="font-semibold text-gray-900 dark:text-white mb-1">Authentic Sources</h3>
           <p className="text-sm text-gray-600 dark:text-gray-400">
-            Citations and references automatically included for credibility.
+            Full generation can include citations and references for credibility.
           </p>
         </div>
 
@@ -64,9 +64,9 @@ export default function HomePage() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
             </svg>
           </div>
-          <h3 className="font-semibold text-gray-900 dark:text-white mb-1">Natural Writing</h3>
+          <h3 className="font-semibold text-gray-900 dark:text-white mb-1">Flexible AI Engine</h3>
           <p className="text-sm text-gray-600 dark:text-gray-400">
-            Advanced prompt engineering for human-like, engaging content.
+            Provider-independent generation keeps the writing experience consistent as models evolve.
           </p>
         </div>
       </div>

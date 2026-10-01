@@ -37,7 +37,10 @@ services:
     environment:
       - DATABASE_URL=postgresql://postgres:postgres@db:5432/ai_blog
       - REDIS_URL=redis://redis:6379/0
+      - CACHE_URL=redis://redis:6379/1
+      - LLM_PROVIDER=${LLM_PROVIDER:-anthropic}
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
       - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY:-django-insecure-local-dev}
       - DJANGO_DEBUG=True
       - ADMIN_INVITE_CODE=${ADMIN_INVITE_CODE:-local-admin-invite}
@@ -58,7 +61,10 @@ services:
     environment:
       - DATABASE_URL=postgresql://postgres:postgres@db:5432/ai_blog
       - REDIS_URL=redis://redis:6379/0
+      - CACHE_URL=redis://redis:6379/1
+      - LLM_PROVIDER=${LLM_PROVIDER:-anthropic}
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
       - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY:-django-insecure-local-dev}
       - DJANGO_DEBUG=True
       - ADMIN_INVITE_CODE=${ADMIN_INVITE_CODE:-local-admin-invite}

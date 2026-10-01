@@ -14,6 +14,7 @@ Build a user-owned AI blog platform where:
 - Async path: Celery + Redis (with sync fallback).
 - DB: PostgreSQL.
 - Auth: DRF token auth.
+- LLM boundary: provider-neutral contract with Anthropic and Gemini adapters.
 
 ### Runtime modes
 - Fast/MVP mode: synchronous generation (`QUEUE_ALWAYS_SYNC=True`).
@@ -42,9 +43,9 @@ Environment usage:
 
 ## 4) Deployment Runtime Split
 
-- Local/dev: Docker Compose for reproducible full-stack environment.
-- Production/current plan: Vercel for both frontend and backend.
-- Future scale option: introduce dedicated worker infrastructure only when traffic requires it.
+- Local/dev: Docker Compose for reproducible full-stack development and evaluation.
+- Recommended hosted topology: Vercel frontend plus the Render blueprint for Django, Celery, PostgreSQL, and Redis.
+- Synchronous/serverless option: separate Vercel frontend and backend projects with `QUEUE_ALWAYS_SYNC=True`.
 
 ## 5) Key Flows
 
@@ -95,12 +96,13 @@ Environment usage:
 
 ## 9) Scalability Path
 Current:
-- Vercel-friendly sync mode for speed.
-- Optional queue fallback for local reliability.
+- Vercel-friendly synchronous mode for simple deployments.
+- Redis/Celery asynchronous mode for deployments with persistent workers.
+- Shared Redis cache support for multi-worker deployments.
 
 Scale trigger path:
-- Keep Vercel as primary for current plan.
-- Introduce worker-based async infrastructure later only if traffic requires it.
+- Keep the frontend independently deployable from API and worker capacity.
+- Increase worker concurrency and database/Redis capacity based on observed queue depth and latency.
 
 ## 10) Tradeoffs
 - Session-based anonymous feedback lowers friction but has weaker identity guarantees.

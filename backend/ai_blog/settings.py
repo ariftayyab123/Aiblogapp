@@ -20,6 +20,11 @@ SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'django-insecure-change-this-in-prod
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv('DJANGO_DEBUG', 'True').lower() == 'true'
 
+if not DEBUG and SECRET_KEY == 'django-insecure-change-this-in-production':
+    raise ImproperlyConfigured(
+        'DJANGO_SECRET_KEY must be configured when DJANGO_DEBUG=False'
+    )
+
 def _csv_env(var_name: str, default: str = ''):
     value = os.getenv(var_name, default)
     return [item.strip() for item in value.split(',') if item.strip()]
@@ -154,15 +159,24 @@ MEDIA_ROOT = BASE_DIR / 'media'
 # Default primary key field type
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# Anthropic API
-ANTHROPIC_API_KEY = os.getenv('ANTHROPIC_API_KEY', '')
+# LLM provider configuration. Provider API keys never leave the backend.
+LLM_PROVIDER = os.getenv('LLM_PROVIDER', 'anthropic').strip().lower()
+LLM_MAX_RETRIES = int(os.getenv('LLM_MAX_RETRIES', os.getenv('CLAUDE_MAX_RETRIES', '1')))
+LLM_TIMEOUT = int(os.getenv('LLM_TIMEOUT', os.getenv('CLAUDE_TIMEOUT', '60')))
+LLM_FAST_TIMEOUT = int(os.getenv('LLM_FAST_TIMEOUT', os.getenv('CLAUDE_FAST_TIMEOUT', '30')))
 
-# Claude Model Configuration
-CLAUDE_DEFAULT_MODEL = os.getenv('CLAUDE_MODEL', 'claude-3-5-sonnet-20241022')
-CLAUDE_FAST_MODEL = os.getenv('CLAUDE_FAST_MODEL', CLAUDE_DEFAULT_MODEL)
-CLAUDE_MAX_RETRIES = int(os.getenv('CLAUDE_MAX_RETRIES', '1'))
-CLAUDE_TIMEOUT = int(os.getenv('CLAUDE_TIMEOUT', '60'))
-CLAUDE_FAST_TIMEOUT = int(os.getenv('CLAUDE_FAST_TIMEOUT', '30'))
+# Anthropic adapter. CLAUDE_* fallbacks preserve existing deployments.
+ANTHROPIC_API_KEY = os.getenv('ANTHROPIC_API_KEY', '')
+ANTHROPIC_MODEL = os.getenv(
+    'ANTHROPIC_MODEL',
+    os.getenv('CLAUDE_MODEL', 'claude-3-5-sonnet-20241022')
+)
+ANTHROPIC_FAST_MODEL = os.getenv(
+    'ANTHROPIC_FAST_MODEL',
+    os.getenv('CLAUDE_FAST_MODEL', ANTHROPIC_MODEL)
+)
+
+# Generation policy shared by all providers
 FAST_MAX_TOKENS = int(os.getenv('FAST_MAX_TOKENS', '650'))
 FAST_MIN_WORDS = int(os.getenv('FAST_MIN_WORDS', '180'))
 FAST_MAX_WORDS = int(os.getenv('FAST_MAX_WORDS', '260'))
@@ -171,8 +185,6 @@ NORMAL_MAX_WORDS = int(os.getenv('NORMAL_MAX_WORDS', '1200'))
 LLM_CIRCUIT_FAILURE_THRESHOLD = int(os.getenv('LLM_CIRCUIT_FAILURE_THRESHOLD', '3'))
 LLM_CIRCUIT_COOL_OFF_SECONDS = int(os.getenv('LLM_CIRCUIT_COOL_OFF_SECONDS', '30'))
 
-# LLM provider configuration
-LLM_PROVIDER = os.getenv('LLM_PROVIDER', 'anthropic').strip().lower()
 ADMIN_AUTH_REQUIRED = os.getenv('ADMIN_AUTH_REQUIRED', 'False').lower() == 'true'
 ADMIN_INVITE_CODE = os.getenv('ADMIN_INVITE_CODE', '')
 
@@ -191,13 +203,24 @@ QUEUE_ALWAYS_SYNC = os.getenv('QUEUE_ALWAYS_SYNC', 'False').lower() == 'true'
 QUEUE_SYNC_FALLBACK = os.getenv('QUEUE_SYNC_FALLBACK', str(DEBUG)).lower() == 'true'
 CACHE_TTL_SECONDS = int(os.getenv('CACHE_TTL_SECONDS', '60'))
 
-CACHES = {
-    'default': {
-        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
-        'LOCATION': 'ai-blog-cache',
-        'TIMEOUT': CACHE_TTL_SECONDS,
+CACHE_URL = os.getenv('CACHE_URL', REDIS_URL if not DEBUG else '')
+if CACHE_URL:
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.redis.RedisCache',
+            'LOCATION': CACHE_URL,
+            'TIMEOUT': CACHE_TTL_SECONDS,
+            'KEY_PREFIX': 'ai-blog',
+        }
     }
-}
+else:
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+            'LOCATION': 'ai-blog-cache',
+            'TIMEOUT': CACHE_TTL_SECONDS,
+        }
+    }
 
 
 def _validate_llm_config():
@@ -217,8 +240,8 @@ def _validate_llm_config():
     if LLM_PROVIDER == 'anthropic':
         if _is_missing_or_placeholder(ANTHROPIC_API_KEY):
             raise ImproperlyConfigured("ANTHROPIC_API_KEY is required when LLM_PROVIDER=anthropic")
-        if not CLAUDE_DEFAULT_MODEL:
-            raise ImproperlyConfigured("CLAUDE_MODEL is required when LLM_PROVIDER=anthropic")
+        if not ANTHROPIC_MODEL:
+            raise ImproperlyConfigured("ANTHROPIC_MODEL is required when LLM_PROVIDER=anthropic")
 
     if LLM_PROVIDER == 'gemini':
         if _is_missing_or_placeholder(GEMINI_API_KEY):

@@ -20,9 +20,7 @@ api.interceptors.request.use(
     if (!config.headers['X-Request-ID']) {
       config.headers['X-Request-ID'] = crypto.randomUUID();
     }
-    const token =
-      localStorage.getItem(AUTH_TOKEN_STORAGE_KEY) ||
-      import.meta.env.VITE_API_TOKEN;
+    const token = localStorage.getItem(AUTH_TOKEN_STORAGE_KEY);
     if (token) {
       config.headers.Authorization = `Token ${token}`;
     }
