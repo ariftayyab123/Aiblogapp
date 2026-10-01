@@ -1,10 +1,17 @@
 /**
  * Card component for content containers.
+ *
+ * Hairline border, flat surface — the editorial system uses rules rather than
+ * shadows to separate content. Pass `interactive` for cards that are clickable.
  */
-export function Card({ children, className = '', ...props }) {
+export function Card({ children, className = '', interactive = false, ...props }) {
   return (
     <div
-      className={`card p-6 ${className}`}
+      className={`card-editorial p-6 ${
+        interactive
+          ? 'cursor-pointer hover:border-ink-400 dark:hover:border-ink-600'
+          : ''
+      } ${className}`}
       {...props}
     >
       {children}
@@ -22,7 +29,7 @@ export function CardHeader({ children, className = '' }) {
 
 export function CardTitle({ children, className = '' }) {
   return (
-    <h3 className={`text-xl font-semibold text-gray-900 dark:text-white ${className}`}>
+    <h3 className={`font-display text-xl font-semibold tracking-tight text-ink-950 dark:text-ink-50 ${className}`}>
       {children}
     </h3>
   );

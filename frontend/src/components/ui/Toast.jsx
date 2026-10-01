@@ -11,11 +11,20 @@ const icons = {
   warning: ExclamationTriangleIcon,
 };
 
-const styles = {
-  success: 'bg-green-50 border-green-200 text-green-800 dark:bg-green-900/20 dark:border-green-800 dark:text-green-200',
-  error: 'bg-red-50 border-red-200 text-red-800 dark:bg-red-900/20 dark:border-red-800 dark:text-red-200',
-  info: 'bg-blue-50 border-blue-200 text-blue-800 dark:bg-blue-900/20 dark:border-blue-800 dark:text-blue-200',
-  warning: 'bg-yellow-50 border-yellow-200 text-yellow-800 dark:bg-yellow-900/20 dark:border-yellow-800 dark:text-yellow-200',
+/* Hairline surface for every toast; type is carried by the left edge and the
+   icon colour, never by a tinted background. */
+const edges = {
+  success: 'border-l-emerald-500',
+  error: 'border-l-red-600',
+  info: 'border-l-ink-900 dark:border-l-ink-100',
+  warning: 'border-l-amber-500',
+};
+
+const iconColors = {
+  success: 'text-emerald-600 dark:text-emerald-400',
+  error: 'text-red-600 dark:text-red-400',
+  info: 'text-ink-700 dark:text-ink-300',
+  warning: 'text-amber-600 dark:text-amber-500',
 };
 
 export default function Toast({ message, type = 'info', onClose }) {
@@ -37,17 +46,20 @@ export default function Toast({ message, type = 'info', onClose }) {
 
   return (
     <div
-      className={`flex items-center gap-3 px-4 py-3 rounded-lg border shadow-lg transition-all duration-300 max-w-md ${
-        styles[type]
+      role="status"
+      className={`card-editorial flex max-w-md items-center gap-3 border-l-2 px-4 py-3 shadow-e-lg transition-all duration-300 ${
+        edges[type] || edges.info
       } ${isExiting ? 'opacity-0 translate-x-full' : 'opacity-100 translate-x-0'}`}
     >
-      <Icon className="w-5 h-5 flex-shrink-0" />
-      <p className="flex-1 text-sm font-medium">{message}</p>
+      <Icon className={`h-5 w-5 flex-shrink-0 ${iconColors[type] || iconColors.info}`} aria-hidden="true" />
+      <p className="flex-1 text-sm font-medium text-ink-900 dark:text-ink-100">{message}</p>
       <button
+        type="button"
         onClick={handleClose}
-        className="flex-shrink-0 p-1 rounded hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
+        aria-label="Dismiss notification"
+        className="flex-shrink-0 cursor-pointer rounded p-1 text-ink-500 transition-colors duration-200 hover:bg-ink-100 hover:text-ink-950 dark:text-ink-400 dark:hover:bg-ink-800 dark:hover:text-ink-50"
       >
-        <XMarkIcon className="w-4 h-4" />
+        <XMarkIcon className="h-4 w-4" />
       </button>
     </div>
   );

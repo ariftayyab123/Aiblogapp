@@ -16,6 +16,7 @@ from django.utils import timezone
 from django.utils.text import slugify
 
 from ai_blog.apps.core.services.base import BaseService, ServiceError
+from ..content import compute_content_structure
 from ..models import BlogPost, Persona
 from .prompts import PromptService
 
@@ -146,7 +147,8 @@ class BlogGenerationService(BaseService[BlogPost]):
                 content=parsed_content['markdown'],
                 sources=parsed_content['sources'],
                 structure=parsed_content.get('structure', {}),
-                metadata=response_data.get('usage', {})
+                metadata=response_data.get('usage', {}),
+                title=parsed_content.get('title'),
             )
 
             return {
@@ -603,15 +605,7 @@ class BlogGenerationService(BaseService[BlogPost]):
 
     def _analyze_structure(self, markdown: str) -> Dict[str, Any]:
         """Analyze markdown structure for frontend rendering"""
-        headings = re.findall(r'^(#{1,3})\s+(.+)$', markdown, re.MULTILINE)
-        word_count = len(markdown.split())
-
-        return {
-            'word_count': word_count,
-            'heading_count': len(headings),
-            'reading_time_minutes': max(1, word_count // 200),
-            'headings': [{'level': h[0], 'text': h[1]} for h in headings]
-        }
+        return compute_content_structure(markdown)
 
     def _update_post_with_content(
         self,
@@ -619,16 +613,17 @@ class BlogGenerationService(BaseService[BlogPost]):
         content: str,
         sources: List[Dict],
         structure: Dict,
-        metadata: Dict
+        metadata: Dict,
+        title: str = None,
     ) -> None:
         """Update BlogPost with generated content and complete generation"""
         blog_post.generated_content = content
         blog_post.sources = sources
         blog_post.content_structure = structure
 
-        # Update title if extracted
-        if structure.get('title'):
-            blog_post.title = structure['title'][:300]
+        # Replace the "Draft: <topic>" placeholder with the generated headline.
+        if title:
+            blog_post.title = title[:300]
 
         # Merge metadata
         blog_post.metadata = {**(blog_post.metadata or {}), **metadata}
@@ -671,35 +666,6 @@ class BlogGenerationService(BaseService[BlogPost]):
             }
         except BlogPost.DoesNotExist:
             return None
-
-    def list_blog_posts(
-        self,
-        status: str = None,
-        persona_slug: str = None,
-        limit: int = 20
-    ) -> List[Dict]:
-        """List blog posts with optional filters"""
-        queryset = BlogPost.objects.all()
-
-        if status:
-            queryset = queryset.filter(status=status)
-        if persona_slug:
-            queryset = queryset.filter(persona__slug=persona_slug)
-
-        posts = queryset[:limit]
-
-        return [
-            {
-                'id': p.id,
-                'title': p.title,
-                'slug': p.slug,
-                'status': p.status,
-                'sentiment_score': p.sentiment_score,
-                'persona': p.persona.name if p.persona else None,
-                'created_at': p.created_at.isoformat()
-            }
-            for p in posts
-        ]
 
     def delete_blog_post(self, blog_post_id: int) -> bool:
         """Delete a blog post by ID"""

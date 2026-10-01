@@ -24,6 +24,14 @@ services:
           type: redis
           name: ai-blog-redis
           property: connectionString
+      # Shared cache across gunicorn workers. Without this each worker keeps its
+      # own LocMemCache, so throttle counters are counted per-process and the
+      # effective rate limit becomes (configured rate x worker count).
+      - key: CACHE_URL
+        fromService:
+          type: redis
+          name: ai-blog-redis
+          property: connectionString
       - key: LLM_PROVIDER
         value: anthropic
       - key: ANTHROPIC_API_KEY

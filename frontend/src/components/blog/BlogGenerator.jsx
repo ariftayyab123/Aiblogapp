@@ -3,37 +3,39 @@
  */
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { SparklesIcon } from '@heroicons/react/24/outline';
+import { ChevronDownIcon, SparklesIcon } from '@heroicons/react/24/outline';
 import { usePersonas } from '../../hooks/usePersonas';
 import { useBlogGeneration, GENERATION_STAGES } from '../../hooks/useBlogGeneration';
-import { Card, CardHeader, CardTitle } from '../ui/Card';
-import { Textarea } from '../ui/Input';
 import { Button } from '../ui/Button';
-import { Badge } from '../ui/Badge';
-import { encryptBlogId } from '../../utils/blogIdCrypto';
 
 const personaDescriptions = {
   technical: {
     name: 'Technical Writer',
     description: 'Precise, jargon-appropriate, citation-heavy',
-    color: 'blue',
   },
   narrative: {
     name: 'Storyteller',
     description: 'Narrative-driven, emotional hooks',
-    color: 'purple',
   },
   analyst: {
     name: 'Industry Analyst',
     description: 'Data-focused, trend-aware',
-    color: 'green',
   },
   educator: {
     name: 'Educator',
     description: 'Explanatory, structured, beginner-friendly',
-    color: 'yellow',
   },
 };
+
+/** Numbered section label — the Swiss grid device used throughout the form. */
+function FieldLabel({ index, children, htmlFor }) {
+  return (
+    <label htmlFor={htmlFor} className="flex items-baseline gap-3">
+      <span className="font-display text-sm text-accent-600 dark:text-accent-400">{index}</span>
+      <span className="eyebrow">{children}</span>
+    </label>
+  );
+}
 
 export default function BlogGenerator() {
   const navigate = useNavigate();
@@ -59,143 +61,183 @@ export default function BlogGenerator() {
     const blogPostId = await generateBlog(topic, selectedPersona, speed);
 
     if (blogPostId) {
+      const { encryptBlogId } = await import('../../utils/blogIdCrypto');
       navigate(`/blog/${encryptBlogId(blogPostId)}`);
     }
   };
 
   const isLoading = state.isGenerating || personasLoading;
+  const topicError = topic.length > 0 && topic.length < 5;
 
   return (
-    <div className="w-full">
-      <Card>
-        <CardHeader>
-          <CardTitle>Generate AI Blog Post</CardTitle>
-          <p className="text-gray-600 dark:text-gray-400 mt-1">
-            Enter a topic and choose a writing style to generate your blog post.
-          </p>
-        </CardHeader>
+    <section className="card-editorial p-6 md:p-8">
+      <header className="border-b border-ink-200 pb-5 dark:border-ink-800">
+        <h2 className="font-display text-2xl font-semibold tracking-tight text-ink-950 dark:text-ink-50">
+          Draft a new post
+        </h2>
+        <p className="mt-1.5 text-sm text-ink-600 dark:text-ink-400">
+          Written by Claude from your topic and chosen style. Every draft is
+          machine-generated and yours to edit before publishing.
+        </p>
+      </header>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Topic Input */}
-          <Textarea
-            label="Blog Topic"
-            placeholder="e.g., The future of renewable energy in developing countries..."
+      <form onSubmit={handleSubmit} className="mt-7 space-y-8">
+        {/* 01 — Topic */}
+        <div className="space-y-3">
+          <FieldLabel index="01" htmlFor="blog-topic">
+            Topic
+          </FieldLabel>
+          <textarea
+            id="blog-topic"
+            rows={5}
             value={topic}
             onChange={(e) => setTopic(e.target.value)}
-            rows={5}
             disabled={isLoading}
-            error={topic.length > 0 && topic.length < 5 ? 'Topic must be at least 5 characters' : ''}
             required
+            aria-invalid={topicError || undefined}
+            aria-describedby={topicError ? 'blog-topic-error' : undefined}
+            placeholder="e.g., The future of renewable energy in developing countries..."
+            className={`input-editorial resize-y leading-relaxed disabled:opacity-60 ${
+              topicError ? 'border-red-500 focus:border-red-500 dark:border-red-500' : ''
+            }`}
           />
+          {topicError && (
+            <p id="blog-topic-error" className="text-sm text-red-600 dark:text-red-400">
+              Topic must be at least 5 characters
+            </p>
+          )}
+        </div>
 
-          {/* Persona Selection */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-              Writing Style
-            </label>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {Object.entries(personaDescriptions).map(([slug, desc]) => {
-                const persona = personaList.find(p => p.slug === slug);
-                if (!persona) return null;
+        {/* 02 — Writing style */}
+        <fieldset className="space-y-3" disabled={isLoading}>
+          <legend className="sr-only">Writing style</legend>
+          <FieldLabel index="02">Writing style</FieldLabel>
+          <div className="grid grid-cols-1 gap-px overflow-hidden rounded-lg border border-ink-200 bg-ink-200 sm:grid-cols-2 dark:border-ink-800 dark:bg-ink-800">
+            {Object.entries(personaDescriptions).map(([slug, desc]) => {
+              const persona = personaList.find((p) => p.slug === slug);
+              if (!persona) return null;
 
-                const isSelected = selectedPersona === slug;
+              const isSelected = selectedPersona === slug;
 
-                return (
-                  <button
-                    key={slug}
-                    type="button"
-                    onClick={() => setSelectedPersona(slug)}
-                    disabled={isLoading}
-                    className={`p-4 rounded-lg border-2 text-left transition-all ${
+              return (
+                <button
+                  key={slug}
+                  type="button"
+                  onClick={() => setSelectedPersona(slug)}
+                  disabled={isLoading}
+                  aria-pressed={isSelected}
+                  className={`relative cursor-pointer p-4 text-left transition-colors duration-200 disabled:cursor-not-allowed disabled:opacity-60 ${
+                    isSelected
+                      ? 'bg-ink-900 text-white dark:bg-ink-50 dark:text-ink-950'
+                      : 'bg-white text-ink-950 hover:bg-ink-100 dark:bg-ink-900 dark:text-ink-50 dark:hover:bg-ink-800'
+                  }`}
+                >
+                  {isSelected && (
+                    <span
+                      aria-hidden="true"
+                      className="absolute right-0 top-0 h-full w-1 bg-accent-500"
+                    />
+                  )}
+                  <span className="block font-medium">{desc.name}</span>
+                  <span
+                    className={`mt-1 block text-sm ${
                       isSelected
-                        ? 'border-primary-500 bg-primary-50/80 dark:bg-primary-900/20 dark:border-primary-500 shadow-sm'
-                        : 'border-gray-200 dark:border-gray-700 hover:border-primary-300 dark:hover:border-primary-700 hover:shadow-sm'
+                        ? 'text-ink-300 dark:text-ink-600'
+                        : 'text-ink-600 dark:text-ink-400'
                     }`}
                   >
-                    <div className="flex items-start justify-between mb-1">
-                      <span className="font-medium text-gray-900 dark:text-white">
-                        {desc.name}
-                      </span>
-                      {isSelected && (
-                        <Badge variant="blue">Selected</Badge>
-                      )}
-                    </div>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
-                      {desc.description}
-                    </p>
-                  </button>
-                );
-              })}
-            </div>
+                    {desc.description}
+                  </span>
+                </button>
+              );
+            })}
           </div>
+        </fieldset>
 
-          {/* Generate Button */}
-          <div className="relative flex flex-col md:flex-row md:items-end gap-4 md:gap-6">
-            <div className="min-w-48">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Blog Length
-              </label>
-              <select
-                value={speed}
-                onChange={(e) => setSpeed(e.target.value)}
-                disabled={isLoading}
-                aria-label="Blog detail level"
-                className="w-full appearance-none px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-primary-500"
-              >
-                <option value="fast">Brief (quick read)</option>
-                <option value="normal">Detailed (in-depth)</option>
-              </select>
-              <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+        {/* 03 — Length + submit */}
+        <div className="space-y-3">
+          <FieldLabel index="03" htmlFor="blog-length">
+            Length
+          </FieldLabel>
+          <div className="flex flex-col gap-4 md:flex-row md:items-start">
+            <div className="md:w-56">
+              <div className="relative">
+                <select
+                  id="blog-length"
+                  value={speed}
+                  onChange={(e) => setSpeed(e.target.value)}
+                  disabled={isLoading}
+                  className="input-editorial cursor-pointer appearance-none pr-10 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  <option value="fast">Brief (quick read)</option>
+                  <option value="normal">Detailed (in-depth)</option>
+                </select>
+                <ChevronDownIcon
+                  aria-hidden="true"
+                  className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-500"
+                />
+              </div>
+              <p className="mt-2 text-xs leading-relaxed text-ink-600 dark:text-ink-400">
                 {lengthHint}
               </p>
             </div>
-            
-            <Button
-              type="submit"
-              variant="primary"
-              size="lg"
-              isLoading={isLoading}
-              disabled={topic.trim().length < 5 || isLoading}
-              className="w-full md:flex-1"
-            >
-              {isLoading ? (
-                <>Generating...</>
-              ) : (
-                <>
-                  <SparklesIcon className="w-5 h-5" />
-                  Generate Blog Post
-                </>
-              )}
-            </Button>
-            {state.isGenerating && (
-              <Button type="button" variant="secondary" onClick={cancelGeneration}>
-                Cancel
-              </Button>
-            )}
-            {!state.isGenerating && state.currentStage === 'error' && state.jobId && (
-              <Button type="button" variant="secondary" onClick={retryLastJob}>
-                Retry
-              </Button>
-            )}
-          </div>
 
-          {/* Progress Indicator */}
-          {state.isGenerating && (
-            <div className="mt-4">
-              <div className="flex items-center justify-between text-sm text-gray-600 dark:text-gray-400 mb-2">
-                <span>{GENERATION_STAGES[state.currentStage]}</span>
-                <span>{state.progress}%</span>
-              </div>
-              <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                <div
-                  className="bg-primary-600 h-2 rounded-full transition-all duration-300"
-                  style={{ width: `${state.progress}%` }}
-                />
-              </div>
+            <div className="flex flex-1 flex-col gap-3 sm:flex-row">
+              <Button
+                type="submit"
+                variant="ink"
+                size="lg"
+                isLoading={isLoading}
+                disabled={topic.trim().length < 5 || isLoading}
+                className="flex flex-1 items-center justify-center gap-2"
+              >
+                {isLoading ? (
+                  <>Generating...</>
+                ) : (
+                  <>
+                    <SparklesIcon aria-hidden="true" className="h-5 w-5" />
+                    Generate draft
+                  </>
+                )}
+              </Button>
+              {state.isGenerating && (
+                <Button type="button" variant="quiet" size="lg" onClick={cancelGeneration}>
+                  Cancel
+                </Button>
+              )}
+              {!state.isGenerating && state.currentStage === 'error' && state.jobId && (
+                <Button type="button" variant="quiet" size="lg" onClick={retryLastJob}>
+                  Retry
+                </Button>
+              )}
             </div>
-          )}
-        </form>
-      </Card>
-    </div>
+          </div>
+        </div>
+
+        {/* Staged progress — never a bare spinner. */}
+        {state.isGenerating && (
+          <div
+            role="status"
+            aria-live="polite"
+            className="border-t border-ink-200 pt-5 dark:border-ink-800"
+          >
+            <div className="mb-2 flex items-baseline justify-between">
+              <span className="text-sm font-medium text-ink-950 dark:text-ink-50">
+                {GENERATION_STAGES[state.currentStage]}
+              </span>
+              <span className="font-display text-sm text-ink-600 dark:text-ink-400">
+                {state.progress}%
+              </span>
+            </div>
+            <div className="h-1 w-full overflow-hidden bg-ink-200 dark:bg-ink-800">
+              <div
+                className="h-1 bg-accent-500 transition-[width] duration-300 ease-out"
+                style={{ width: `${state.progress}%` }}
+              />
+            </div>
+          </div>
+        )}
+      </form>
+    </section>
   );
 }

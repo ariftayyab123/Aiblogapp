@@ -1,3 +1,6 @@
+/**
+ * Auth layout - editorial title page: statement column + form column.
+ */
 export default function AuthLayout({
   heroTitle,
   heroDescription,
@@ -8,45 +11,68 @@ export default function AuthLayout({
   children,
 }) {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary-900 via-primary-800 to-primary-700 text-white px-4 py-8 md:px-8 md:py-10">
-      <div className="max-w-7xl mx-auto min-h-[calc(100vh-4rem)] grid lg:grid-cols-2 rounded-3xl overflow-hidden border border-white/10 shadow-2xl">
-        <section className="p-8 md:p-12 lg:p-14 bg-gradient-to-br from-primary-950/80 to-primary-900/80 flex flex-col justify-between">
-          <div>
-            <span className="inline-flex items-center rounded-full bg-white/10 px-4 py-2 text-xs tracking-[0.14em] uppercase font-semibold text-primary-100">
-              AI Blog Generator
-            </span>
-            <div className="mt-8 flex items-center gap-3">
-              <img
-                src="/ai-blog-icon.svg"
-                alt="AI Blog Generator logo"
-                className="w-12 h-12 md:w-14 md:h-14 rounded-xl shadow-lg"
-              />
-              <p className="text-xl md:text-2xl font-semibold text-white">AI Blog Generator</p>
-            </div>
-            <h1 className="mt-6 text-4xl md:text-5xl font-bold leading-tight">{heroTitle}</h1>
-            <p className="mt-6 text-primary-100/90 text-lg max-w-xl">{heroDescription}</p>
-            <div className="mt-8 inline-flex items-center rounded-full bg-white/10 px-4 py-2 text-sm text-primary-100">
-              Guided AI writing with citations and analytics
-            </div>
+    <div className="min-h-screen bg-paper px-4 py-10 md:px-8 md:py-14 lg:flex lg:items-center dark:bg-ink-950">
+      <div className="mx-auto grid w-full max-w-6xl gap-x-12 gap-y-14 lg:grid-cols-12">
+        {/* Statement column */}
+        <section className="lg:col-span-6 xl:col-span-5">
+          <div className="border-t-2 border-ink-950 pt-4 dark:border-ink-50">
+            <span className="eyebrow">AI Blog Generator</span>
           </div>
 
-          <div className="mt-10 space-y-4 text-primary-100/90">
-            {featurePoints.map((point) => (
-              <div key={point} className="flex items-center gap-3">
-                 <span>{point}</span>
-              </div>
-            ))}
+          <div className="mt-8 flex items-center gap-3">
+            <img
+              src="/ai-blog-icon.svg"
+              alt=""
+              aria-hidden="true"
+              className="h-11 w-11 rounded-lg ring-1 ring-ink-900/10 dark:ring-ink-50/10"
+            />
+            <span className="font-display text-xl font-semibold tracking-tight text-ink-950 dark:text-ink-50">
+              Blog Generator
+            </span>
           </div>
+
+          <h1 className="mt-8 font-display text-[2rem] font-semibold leading-[1.12] tracking-tight text-ink-950 sm:text-[2.75rem] dark:text-ink-50">
+            {heroTitle}
+            <span className="text-accent-500">.</span>
+          </h1>
+
+          <p className="mt-5 max-w-prose leading-relaxed text-ink-700 dark:text-ink-300">
+            {heroDescription}
+          </p>
+
+          {featurePoints.length > 0 && (
+            <ul className="mt-10">
+              {featurePoints.map((point, index) => (
+                <li key={point} className="rule flex gap-4 py-4">
+                  <span className="font-display text-sm text-accent-600 dark:text-accent-400">
+                    {String(index + 1).padStart(2, '0')}
+                  </span>
+                  <span className="text-sm leading-relaxed text-ink-700 dark:text-ink-300">
+                    {point}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
         </section>
 
-        <section className="p-8 md:p-12 lg:p-14 bg-gradient-to-b from-primary-900/80 to-primary-950/90 flex items-center justify-center">
-          <div className="w-full max-w-xl rounded-3xl border border-white/10 bg-primary-950/60 backdrop-blur-md shadow-2xl p-7 md:p-9">
-            <h2 className="text-3xl font-bold text-center text-white">{formTitle}</h2>
-            <p className="mt-3 text-center text-primary-100/80">{formDescription}</p>
+        {/* Form column */}
+        <section className="lg:col-span-6 lg:border-l lg:border-ink-200 lg:pl-12 xl:col-span-6 xl:col-start-7 dark:lg:border-ink-800">
+          <div className="mx-auto w-full max-w-md lg:pt-4">
+            <h2 className="font-display text-2xl font-semibold tracking-tight text-ink-950 dark:text-ink-50">
+              {formTitle}
+            </h2>
+            <p className="mt-2 text-sm leading-relaxed text-ink-600 dark:text-ink-400">
+              {formDescription}
+            </p>
 
             {children}
 
-            {footer && <div className="mt-6 text-sm text-primary-100/80 text-center">{footer}</div>}
+            {footer && (
+              <div className="mt-7 border-t border-ink-200 pt-5 text-sm text-ink-600 dark:border-ink-800 dark:text-ink-400">
+                {footer}
+              </div>
+            )}
           </div>
         </section>
       </div>

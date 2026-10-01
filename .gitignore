@@ -31,5 +31,8 @@ yarn-error.log*
 .env.local
 .env.*.local
 
+# Claude Code local tooling (settings, installed skills, plans)
+.claude/
+
 # Misc
 *.log

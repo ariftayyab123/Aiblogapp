@@ -2,14 +2,13 @@
 Django models for AI Blog Generator.
 Implements the data schema from SYSTEM_DESIGN.md
 """
-import re
 from urllib.parse import urlparse
 from django.conf import settings
 from django.db import models
 from django.core.validators import URLValidator
 from django.contrib.postgres.fields import ArrayField
-from django.utils import timezone
-from django.utils.text import slugify
+
+from .content import count_words, reading_time_minutes
 
 
 class BaseTimestamped(models.Model):
@@ -185,13 +184,13 @@ class BlogPost(BaseTimestamped):
 
     @property
     def word_count(self):
-        """Calculate word count from content"""
-        return len(self.generated_content.split()) if self.generated_content else 0
+        """Word count of the generated body (markdown syntax excluded)"""
+        return count_words(self.generated_content)
 
     @property
     def reading_time(self):
-        """Estimate reading time (200 words per minute)"""
-        return max(1, self.word_count // 200)
+        """Estimate reading time (200 words per minute, rounded up)"""
+        return reading_time_minutes(self.word_count)
 
     def update_sentiment_score(self):
         """Recalculate sentiment from engagement records"""
