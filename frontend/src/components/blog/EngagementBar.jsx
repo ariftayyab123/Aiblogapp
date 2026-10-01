@@ -4,56 +4,59 @@
 import { HandThumbUpIcon, HandThumbDownIcon } from '@heroicons/react/24/outline';
 import { HandThumbUpIcon as HandThumbUpSolid, HandThumbDownIcon as HandThumbDownSolid } from '@heroicons/react/24/solid';
 
+const baseButton = 'btn inline-flex items-center gap-2 px-4 py-2 text-sm';
+const selected = {
+  like: 'border border-emerald-600 bg-emerald-50 text-emerald-800 dark:border-emerald-500 dark:bg-emerald-950/40 dark:text-emerald-300',
+  dislike: 'border border-red-600 bg-red-50 text-red-800 dark:border-red-500 dark:bg-red-950/40 dark:text-red-300',
+};
+
 export default function EngagementBar({ likes, dislikes, userAction, onLike, onDislike, isLoading }) {
   const totalReactions = (likes || 0) + (dislikes || 0);
+  // Counts stay hidden until there are enough of them to mean anything.
   const showCounts = totalReactions >= 5;
 
   return (
-    <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
-      <div className="text-sm text-gray-600 dark:text-gray-400">
-        <p>Was this article helpful?</p>
+    <div className="card-editorial flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between">
+      <div>
+        <p className="text-sm font-medium text-ink-900 dark:text-ink-100">Was this article helpful?</p>
         {!showCounts && (
-          <p className="text-xs mt-1">Be among the first to rate this article.</p>
+          <p className="mt-1 text-xs text-ink-500 dark:text-ink-400">
+            Be among the first to rate this article.
+          </p>
         )}
       </div>
 
       <div className="flex items-center gap-3">
-        {/* Like Button */}
         <button
+          type="button"
           onClick={onLike}
           disabled={isLoading}
-          className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all ${
-            userAction === 'like'
-              ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-              : 'bg-white dark:bg-gray-700 text-gray-600 hover:bg-green-50 dark:hover:bg-green-900/20 dark:text-gray-400'
-          }`}
+          aria-pressed={userAction === 'like'}
+          className={`${baseButton} ${userAction === 'like' ? selected.like : 'btn-quiet'}`}
         >
           {userAction === 'like' ? (
-            <HandThumbUpSolid className="w-5 h-5" />
+            <HandThumbUpSolid className="h-5 w-5" aria-hidden="true" />
           ) : (
-            <HandThumbUpIcon className="w-5 h-5" />
+            <HandThumbUpIcon className="h-5 w-5" aria-hidden="true" />
           )}
           <span className="font-medium">Helpful</span>
-          {showCounts && <span className="font-medium">{likes}</span>}
+          {showCounts && <span className="font-medium tabular-nums">{likes}</span>}
         </button>
 
-        {/* Dislike Button */}
         <button
+          type="button"
           onClick={onDislike}
           disabled={isLoading}
-          className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all ${
-            userAction === 'dislike'
-              ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
-              : 'bg-white dark:bg-gray-700 text-gray-600 hover:bg-red-50 dark:hover:bg-red-900/20 dark:text-gray-400'
-          }`}
+          aria-pressed={userAction === 'dislike'}
+          className={`${baseButton} ${userAction === 'dislike' ? selected.dislike : 'btn-quiet'}`}
         >
           {userAction === 'dislike' ? (
-            <HandThumbDownSolid className="w-5 h-5" />
+            <HandThumbDownSolid className="h-5 w-5" aria-hidden="true" />
           ) : (
-            <HandThumbDownIcon className="w-5 h-5" />
+            <HandThumbDownIcon className="h-5 w-5" aria-hidden="true" />
           )}
           <span className="font-medium">Not helpful</span>
-          {showCounts && <span className="font-medium">{dislikes}</span>}
+          {showCounts && <span className="font-medium tabular-nums">{dislikes}</span>}
         </button>
       </div>
     </div>

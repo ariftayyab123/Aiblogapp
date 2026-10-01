@@ -4,104 +4,229 @@
 
 @layer base {
   :root {
-    --brand-500: #5c4bd1;
-    --brand-600: #4e3fc2;
-    --brand-700: #3f33ab;
-    --surface-soft: #f5f7fb;
+    /* Editorial design system — Swiss Modernism 2.0 */
+    --color-primary: #18181b;
+    --color-on-primary: #ffffff;
+    --color-secondary: #3f3f46;
+    --color-accent: #ec4899;
+    --color-on-accent: #000000;
+    --color-background: #fafafa;
+    --color-foreground: #09090b;
+    --color-card: #ffffff;
+    --color-muted: #e8ecf0;
+    --color-muted-foreground: #475569;
+    --color-border: #e4e4e7;
+    --color-destructive: #dc2626;
+    --color-ring: #18181b;
+
+    /* Spacing scale — density 4/10 (standard) */
+    --space-xs: 0.25rem;
+    --space-sm: 0.5rem;
+    --space-md: 1rem;
+    --space-lg: 1.5rem;
+    --space-xl: 2rem;
+    --space-2xl: 3rem;
+    --space-3xl: 4rem;
+
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+    --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
+    --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
+    --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.15);
   }
 
+  .dark {
+    --color-background: #09090b;
+    --color-foreground: #fafafa;
+    --color-card: #18181b;
+    --color-muted: #27272a;
+    --color-muted-foreground: #a1a1aa;
+    --color-border: #27272a;
+    --color-ring: #fafafa;
+  }
+
+  /* Flat paper ground — no gradients, per Swiss Modernism. */
   body {
-    @apply min-h-screen text-gray-900 dark:text-gray-100;
-    background:
-      radial-gradient(1200px 500px at 10% -10%, rgba(92, 75, 209, 0.12), transparent 55%),
-      radial-gradient(900px 420px at 95% 0%, rgba(14, 165, 233, 0.10), transparent 60%),
-      var(--surface-soft);
+    @apply min-h-screen font-sans text-ink-950 dark:text-ink-50;
+    background-color: var(--color-background);
+    -webkit-font-smoothing: antialiased;
   }
 
-  .dark body {
-    background:
-      radial-gradient(1200px 500px at 10% -10%, rgba(92, 75, 209, 0.20), transparent 55%),
-      radial-gradient(900px 420px at 95% 0%, rgba(14, 165, 233, 0.16), transparent 60%),
-      #111827;
+  h1, h2, h3 {
+    @apply font-display;
+  }
+
+  /* Visible keyboard focus everywhere, never removed. */
+  :focus-visible {
+    outline: 2px solid var(--color-ring);
+    outline-offset: 2px;
+  }
+}
+
+/* Honour reduced-motion globally. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }
 
 @layer components {
-  /* Custom button styles */
+  /* ---------- Editorial system ---------- */
+
+  /* Small uppercase label used as a section eyebrow / dateline. */
+  .eyebrow {
+    @apply font-sans text-[0.6875rem] font-semibold uppercase tracking-[0.14em] text-ink-600 dark:text-ink-400;
+  }
+
+  /* Hairline rule — the main structural device of the grid. */
+  .rule {
+    @apply border-t border-ink-200 dark:border-ink-800;
+  }
+
+  .btn-ink {
+    @apply bg-ink-900 text-white hover:bg-ink-800 active:bg-ink-950
+      dark:bg-ink-50 dark:text-ink-950 dark:hover:bg-white;
+  }
+
+  /* Black on pink — 6.4:1, per the system's On-Accent token. */
+  .btn-accent {
+    @apply bg-accent-500 text-black hover:bg-accent-400 active:bg-accent-600;
+  }
+
+  .btn-quiet {
+    @apply border border-ink-300 bg-transparent text-ink-900 hover:border-ink-900 hover:bg-ink-50
+      dark:border-ink-700 dark:text-ink-100 dark:hover:border-ink-400 dark:hover:bg-ink-900;
+  }
+
+  /* Hairline-bordered container. No blur, no glass. Radius per system spec (12px). */
+  .card-editorial {
+    @apply rounded-xl border border-ink-200 bg-white transition-colors duration-200
+      dark:border-ink-800 dark:bg-ink-900;
+  }
+
+  .input-editorial {
+    @apply w-full rounded-lg border border-ink-300 bg-white px-4 py-3 text-ink-950 placeholder:text-ink-400
+      transition-colors duration-200 focus:border-ink-900 focus:outline-none
+      dark:border-ink-700 dark:bg-ink-950 dark:text-ink-50 dark:placeholder:text-ink-500
+      dark:focus:border-ink-300;
+  }
+
+  .field-label {
+    @apply mb-2 block text-sm font-medium text-ink-800 dark:text-ink-200;
+  }
+
+  /* Inline link with an accent rule beneath it. */
+  .link-editorial {
+    @apply font-medium text-ink-950 underline decoration-accent-500 decoration-2 underline-offset-4
+      transition-colors duration-200 hover:text-accent-600
+      dark:text-ink-50 dark:hover:text-accent-400;
+  }
+
+  /* Subdued navigational link — "back to", breadcrumbs. */
+  .link-quiet {
+    @apply inline-flex items-center gap-2 text-sm font-medium text-ink-600 transition-colors duration-200
+      hover:text-ink-950 dark:text-ink-400 dark:hover:text-ink-50;
+  }
+
+  /* Destructive actions. #DC2626 is the system's destructive token. */
+  .btn-danger {
+    @apply bg-red-600 text-white hover:bg-red-700 active:bg-red-800;
+  }
+
+  .btn-danger-quiet {
+    @apply border border-red-300 bg-transparent text-red-700 hover:border-red-600 hover:bg-red-50
+      dark:border-red-800 dark:text-red-400 dark:hover:border-red-600 dark:hover:bg-red-950/40;
+  }
+
+  /* Square icon-only control. 44px keeps it above every touch-target minimum. */
+  .icon-btn {
+    @apply inline-flex h-11 w-11 cursor-pointer items-center justify-center rounded-lg
+      text-ink-600 transition-colors duration-200 hover:bg-ink-100 hover:text-ink-950
+      disabled:cursor-not-allowed disabled:opacity-50
+      dark:text-ink-400 dark:hover:bg-ink-800 dark:hover:text-ink-50;
+  }
+
+  /* Metadata chip — hairline, not a coloured pill. */
+  .chip {
+    @apply inline-flex items-center gap-1.5 rounded border border-ink-200 px-2 py-0.5
+      text-[0.6875rem] font-medium uppercase tracking-[0.08em] text-ink-700
+      dark:border-ink-700 dark:text-ink-300;
+  }
+
+  .chip-solid {
+    @apply inline-flex items-center gap-1.5 rounded bg-ink-900 px-2 py-0.5
+      text-[0.6875rem] font-medium uppercase tracking-[0.08em] text-white
+      dark:bg-ink-50 dark:text-ink-950;
+  }
+
+  /* Status marker. Pairs with a text label — never colour alone. */
+  .status-dot {
+    @apply h-1.5 w-1.5 shrink-0 rounded-full;
+  }
+
+  /* Hairline list row that behaves as a link/button. */
+  .row-editorial {
+    @apply block w-full cursor-pointer border-t border-ink-200 px-1 py-4 text-left
+      transition-colors duration-200 hover:bg-ink-50
+      dark:border-ink-800 dark:hover:bg-ink-900/60;
+  }
+
+  /* Loading placeholder. Reserves space so nothing shifts on arrival. */
+  .skeleton {
+    @apply animate-pulse rounded bg-ink-200 dark:bg-ink-800;
+  }
+
+  /* Large figure set in the display face. */
+  .metric {
+    @apply font-display text-3xl font-semibold leading-none tracking-tight text-ink-950 dark:text-ink-50;
+  }
+
+  /* Select styled to match .input-editorial; pair with a ChevronDownIcon. */
+  .select-editorial {
+    @apply w-full cursor-pointer appearance-none rounded-lg border border-ink-300 bg-white
+      px-4 py-2.5 pr-10 text-sm text-ink-950 transition-colors duration-200
+      focus:border-ink-900 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60
+      dark:border-ink-700 dark:bg-ink-950 dark:text-ink-50 dark:focus:border-ink-300;
+  }
+
+  /* Modal backdrop. Flat scrim, no blur. */
+  .scrim {
+    @apply absolute inset-0 bg-ink-950/60;
+  }
+
+  /* Article body. Measure capped at 72ch per the blog-detail spec. */
+  .prose-editorial {
+    @apply prose prose-zinc max-w-article dark:prose-invert
+      prose-headings:font-display prose-headings:font-semibold prose-headings:tracking-tight
+      prose-h1:text-[2rem] prose-h1:leading-tight
+      prose-h2:text-2xl prose-h2:mt-10
+      prose-h3:text-xl
+      prose-p:leading-[1.75]
+      prose-a:font-medium prose-a:text-ink-950 prose-a:decoration-accent-500 prose-a:decoration-2 prose-a:underline-offset-4
+      prose-blockquote:border-l-2 prose-blockquote:border-accent-500 prose-blockquote:font-normal prose-blockquote:not-italic
+      prose-code:rounded prose-code:bg-ink-100 prose-code:px-1.5 prose-code:py-0.5 prose-code:font-normal
+      prose-pre:rounded-lg prose-pre:border prose-pre:border-ink-200 prose-pre:bg-ink-50 prose-pre:text-ink-900
+      prose-hr:border-ink-200
+      prose-img:rounded-lg;
+  }
+
+  .dark .prose-editorial {
+    @apply prose-a:text-ink-50 prose-code:bg-ink-800
+      prose-pre:border-ink-800 prose-pre:bg-ink-900 prose-pre:text-ink-100
+      prose-hr:border-ink-800;
+  }
+
+  .prose-editorial a:hover {
+    @apply text-accent-600 dark:text-accent-400;
+  }
+
+  /* Shared button base. Pair with .btn-ink / .btn-accent / .btn-quiet / .btn-danger. */
   .btn {
-    @apply px-4 py-2 rounded-lg font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed;
-  }
-
-  .btn-primary {
-    @apply text-white focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 shadow-sm hover:shadow-md active:scale-[0.99];
-    background-image: linear-gradient(135deg, var(--brand-500), var(--brand-700));
-  }
-
-  .btn-secondary {
-    @apply bg-white text-gray-700 border border-gray-200 hover:bg-gray-50 dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600 dark:hover:bg-gray-600;
-  }
-
-  .btn-outline {
-    @apply border-2 border-primary-600 text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-900/20;
-  }
-
-  .btn-ghost {
-    @apply text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800;
-  }
-
-  /* Card styles */
-  .card {
-    @apply bg-white/90 dark:bg-gray-800/90 backdrop-blur rounded-xl shadow-sm border border-gray-200/80 dark:border-gray-700 transition-shadow duration-200 hover:shadow-md;
-  }
-
-  /* Input styles */
-  .input {
-    @apply w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700;
-  }
-
-  /* Markdown content styles */
-  .prose-content {
-    @apply prose prose-gray dark:prose-invert max-w-none;
-  }
-
-  .prose-content h1 {
-    @apply text-3xl font-bold mt-8 mb-4;
-  }
-
-  .prose-content h2 {
-    @apply text-2xl font-bold mt-6 mb-3;
-  }
-
-  .prose-content h3 {
-    @apply text-xl font-semibold mt-4 mb-2;
-  }
-
-  .prose-content p {
-    @apply mb-4 leading-relaxed;
-  }
-
-  .prose-content a {
-    @apply text-primary-600 hover:text-primary-700 underline;
-  }
-
-  .prose-content code {
-    @apply bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded text-sm;
-  }
-
-  .prose-content pre {
-    @apply bg-gray-100 dark:bg-gray-800 p-4 rounded-lg overflow-x-auto;
-  }
-
-  .prose-content blockquote {
-    @apply border-l-4 border-primary-500 pl-4 italic text-gray-600 dark:text-gray-400;
-  }
-
-  .prose-content ul, .prose-content ol {
-    @apply ml-6 mb-4;
-  }
-
-  .prose-content li {
-    @apply mb-1;
+    @apply px-4 py-2 rounded-lg font-medium transition-all duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed;
   }
 }
 
@@ -114,9 +239,4 @@
 
 .spinner {
   animation: spin 1s linear infinite;
-}
-
-/* Source card styles */
-.source-card {
-  @apply p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors;
 }

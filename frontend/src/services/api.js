@@ -20,9 +20,7 @@ api.interceptors.request.use(
     if (!config.headers['X-Request-ID']) {
       config.headers['X-Request-ID'] = crypto.randomUUID();
     }
-    const token =
-      localStorage.getItem(AUTH_TOKEN_STORAGE_KEY) ||
-      import.meta.env.VITE_API_TOKEN;
+    const token = localStorage.getItem(AUTH_TOKEN_STORAGE_KEY);
     if (token) {
       config.headers.Authorization = `Token ${token}`;
     }
@@ -70,6 +68,9 @@ export const blogApi = {
 
   // Get a single blog post
   get: (id) => api.get(`/posts/${id}/`),
+
+  // Update a blog post (title, topic, content)
+  update: (id, data) => api.patch(`/posts/${id}/`, data),
 
   // Get public blog post by slug
   getPublicBySlug: (slug) => api.get(`/posts/slug/${slug}/public/`),

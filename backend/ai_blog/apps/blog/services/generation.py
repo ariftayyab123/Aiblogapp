@@ -1,46 +1,30 @@
-"""
-Blog Generation Service.
-Orchestrates blog post generation with Claude AI.
-Handles: prompt construction, API communication, response parsing.
-"""
+"""Provider-neutral blog generation orchestration."""
 import time
 import re
-import json
-import urllib.request
-import urllib.error
 from typing import Dict, List, Any, Optional
 from threading import Lock
-from anthropic import Anthropic, AnthropicError
 from django.conf import settings
 from django.utils import timezone
 from django.utils.text import slugify
 
 from ai_blog.apps.core.services.base import BaseService, ServiceError
+from ..content import compute_content_structure
 from ..models import BlogPost, Persona
+from .llm import GenerationRequest, LLMProviderError, create_llm_provider
 from .prompts import PromptService
 
 
 class BlogGenerationService(BaseService[BlogPost]):
-    """
-    Service for orchestrating blog post generation with Claude AI.
-    """
+    """Coordinate prompts, persistence, and a configured LLM provider."""
 
     model_class = BlogPost
     logger_name = "blog_generation"
 
-    # Provider configuration
-    PROVIDER = getattr(settings, 'LLM_PROVIDER', 'anthropic')
-
-    # Claude model configuration
-    DEFAULT_MODEL = getattr(settings, 'CLAUDE_DEFAULT_MODEL', 'claude-3-5-sonnet-20241022')
-    FAST_MODEL = getattr(settings, 'CLAUDE_FAST_MODEL', DEFAULT_MODEL)
-    MAX_RETRIES = getattr(settings, 'CLAUDE_MAX_RETRIES', 2)
+    MAX_RETRIES = getattr(settings, 'LLM_MAX_RETRIES', 2)
     RETRY_DELAY = 1.0  # seconds
-    GENERATION_TIMEOUT = getattr(settings, 'CLAUDE_TIMEOUT', 60)
-    FAST_TIMEOUT = int(getattr(settings, 'CLAUDE_FAST_TIMEOUT', 30))
+    GENERATION_TIMEOUT = getattr(settings, 'LLM_TIMEOUT', 60)
+    FAST_TIMEOUT = int(getattr(settings, 'LLM_FAST_TIMEOUT', 30))
     FAST_MAX_TOKENS = int(getattr(settings, 'FAST_MAX_TOKENS', 650))
-    GEMINI_MODEL = getattr(settings, 'GEMINI_MODEL', 'gemini-2.0-flash')
-    GEMINI_FAST_MODEL = getattr(settings, 'GEMINI_FAST_MODEL', GEMINI_MODEL)
     CIRCUIT_FAILURE_THRESHOLD = int(getattr(settings, 'LLM_CIRCUIT_FAILURE_THRESHOLD', 3))
     CIRCUIT_COOL_OFF_SECONDS = int(getattr(settings, 'LLM_CIRCUIT_COOL_OFF_SECONDS', 30))
     _provider_state = {
@@ -49,24 +33,10 @@ class BlogGenerationService(BaseService[BlogPost]):
     }
     _state_lock = Lock()
 
-    def __init__(self, api_key: str = None):
+    def __init__(self, api_key: str = None, provider=None):
         super().__init__()
-        self.provider = (self.PROVIDER or 'anthropic').lower()
-        self.client = None
-        self.gemini_api_key = None
-
-        if self.provider == 'anthropic':
-            api_key = api_key or getattr(settings, 'ANTHROPIC_API_KEY', None)
-            if not api_key:
-                raise ValueError("ANTHROPIC_API_KEY must be set in settings when LLM_PROVIDER=anthropic")
-            self.client = Anthropic(api_key=api_key)
-        elif self.provider == 'gemini':
-            self.gemini_api_key = api_key or getattr(settings, 'GEMINI_API_KEY', None)
-            if not self.gemini_api_key:
-                raise ValueError("GEMINI_API_KEY must be set in settings when LLM_PROVIDER=gemini")
-        else:
-            raise ValueError(f"Unsupported LLM_PROVIDER '{self.provider}'. Use 'anthropic' or 'gemini'.")
-
+        self.llm_provider = provider or create_llm_provider(api_key=api_key)
+        self.provider = self.llm_provider.name
         self.prompt_service = PromptService()
 
     def execute(self, *args, **kwargs) -> Dict[str, Any]:
@@ -128,7 +98,7 @@ class BlogGenerationService(BaseService[BlogPost]):
                 owner=owner,
             )
 
-            # 5. Call Claude API with retry logic
+            # 5. Generate content through the configured provider adapter
             response_data = self._call_model_with_retry(
                 system_prompt=system_prompt,
                 user_prompt=user_prompt,
@@ -146,7 +116,8 @@ class BlogGenerationService(BaseService[BlogPost]):
                 content=parsed_content['markdown'],
                 sources=parsed_content['sources'],
                 structure=parsed_content.get('structure', {}),
-                metadata=response_data.get('usage', {})
+                metadata=response_data.get('usage', {}),
+                title=parsed_content.get('title'),
             )
 
             return {
@@ -221,39 +192,46 @@ class BlogGenerationService(BaseService[BlogPost]):
         max_tokens: int,
         speed: str = 'fast'
     ) -> Dict[str, Any]:
-        """Dispatch generation call by configured LLM provider."""
+        """Call the configured provider with application-level retry policy."""
         self._check_circuit_state()
+        max_retries = self._resolve_retry_count(speed)
+        last_error = None
 
-        if self.provider == 'anthropic':
-            result = self._call_claude_with_retry(
-                system_prompt=system_prompt,
-                user_prompt=user_prompt,
-                temperature=temperature,
-                max_tokens=max_tokens,
-                model=self._resolve_model(speed),
-                max_retries=self._resolve_retry_count(speed),
-                timeout_seconds=self._resolve_timeout_seconds(speed),
-            )
-            self._record_success()
-            return result
+        for attempt in range(max_retries + 1):
+            try:
+                result = self.llm_provider.generate(GenerationRequest(
+                    system_prompt=system_prompt,
+                    user_prompt=user_prompt,
+                    temperature=temperature,
+                    max_tokens=max_tokens,
+                    speed=speed,
+                    timeout_seconds=self._resolve_timeout_seconds(speed),
+                ))
+                result.setdefault('usage', {})['retry_count'] = attempt
+                self._record_success()
+                return result
+            except LLMProviderError as exc:
+                last_error = exc
+                self._logger.warning(
+                    "%s generation request failed (attempt %s/%s): %s",
+                    self.provider,
+                    attempt + 1,
+                    max_retries + 1,
+                    exc,
+                )
+                if not exc.retryable:
+                    raise ServiceError(
+                        "Content generation is currently unavailable. Please try again later.",
+                        code=exc.code,
+                    ) from exc
+                if attempt < max_retries:
+                    time.sleep(self.RETRY_DELAY * (2 ** attempt))
 
-        if self.provider == 'gemini':
-            result = self._call_gemini_with_retry(
-                system_prompt=system_prompt,
-                user_prompt=user_prompt,
-                temperature=temperature,
-                max_tokens=max_tokens,
-                model=self._resolve_model(speed),
-                max_retries=self._resolve_retry_count(speed),
-                timeout_seconds=self._resolve_timeout_seconds(speed),
-            )
-            self._record_success()
-            return result
-
+        self._record_failure()
         raise ServiceError(
-            f"Unsupported LLM provider '{self.provider}'",
-            code="INVALID_PROVIDER"
-        )
+            "Content generation is temporarily unavailable. Please try again shortly.",
+            code="PROVIDER_UNAVAILABLE",
+        ) from last_error
 
     def _check_circuit_state(self) -> None:
         with self._state_lock:
@@ -261,9 +239,9 @@ class BlogGenerationService(BaseService[BlogPost]):
             if state['open_until'] > time.time():
                 retry_after = int(state['open_until'] - time.time())
                 raise ServiceError(
-                    f"{self.provider} provider temporarily unavailable. Retry in ~{retry_after}s.",
+                    f"Content generation is temporarily unavailable. Retry in ~{retry_after}s.",
                     code="PROVIDER_UNAVAILABLE",
-                    details={'provider': self.provider, 'retry_after_seconds': max(retry_after, 1)}
+                    details={'retry_after_seconds': max(retry_after, 1)}
                 )
 
     def _record_success(self) -> None:
@@ -279,14 +257,6 @@ class BlogGenerationService(BaseService[BlogPost]):
             if failures >= self.CIRCUIT_FAILURE_THRESHOLD:
                 open_until = time.time() + self.CIRCUIT_COOL_OFF_SECONDS
             self._provider_state[self.provider] = {'failures': failures, 'open_until': open_until}
-
-    def _resolve_model(self, speed: str) -> str:
-        """Select model by provider and requested speed."""
-        if self.provider == 'anthropic':
-            return self.FAST_MODEL if speed == 'fast' else self.DEFAULT_MODEL
-        if self.provider == 'gemini':
-            return self.GEMINI_FAST_MODEL if speed == 'fast' else self.GEMINI_MODEL
-        return self.DEFAULT_MODEL
 
     def _create_post_record(self, topic: str, persona: Persona, raw_prompt: str, owner) -> BlogPost:
         """Create initial BlogPost in GENERATING state"""
@@ -309,235 +279,9 @@ class BlogGenerationService(BaseService[BlogPost]):
         )
         return blog_post
 
-    def _call_claude_with_retry(
-        self,
-        system_prompt: str,
-        user_prompt: str,
-        temperature: float,
-        max_tokens: int,
-        model: str,
-        max_retries: int,
-        timeout_seconds: int,
-    ) -> Dict[str, Any]:
-        """
-        Call Claude API with exponential backoff retry.
-        """
-        last_error = None
-
-        for attempt in range(max_retries + 1):
-            try:
-                start_time = time.time()
-
-                response = self.client.with_options(timeout=timeout_seconds).messages.create(
-                    model=model,
-                    max_tokens=max_tokens,
-                    temperature=temperature,
-                    system=system_prompt,
-                    messages=[{"role": "user", "content": user_prompt}]
-                )
-
-                generation_time = time.time() - start_time
-
-                # Extract content and metadata
-                content = response.content[0].text if response.content else ""
-
-                return {
-                    'content': content,
-                    'usage': {
-                        'model': model,
-                        'input_tokens': response.usage.input_tokens,
-                        'output_tokens': response.usage.output_tokens,
-                        'total_tokens': response.usage.input_tokens + response.usage.output_tokens,
-                        'generation_time_seconds': round(generation_time, 2),
-                        'retry_count': attempt
-                    }
-                }
-
-            except AnthropicError as e:
-                last_error = e
-                status_code = getattr(e, 'status_code', None)
-                error_message = str(e)
-
-                # Fail fast on non-retriable request errors (e.g. billing/credits, invalid params)
-                if status_code and status_code < 500 and status_code != 429:
-                    if "credit balance is too low" in error_message.lower():
-                        raise ServiceError(
-                            "Anthropic billing issue: insufficient API credits. "
-                            "Please top up your Anthropic account and try again.",
-                            code="BILLING_ERROR",
-                            details={'provider': 'anthropic', 'status_code': status_code}
-                        )
-                    raise ServiceError(
-                        f"Anthropic request failed: {error_message}",
-                        code="API_REQUEST_ERROR",
-                        details={'provider': 'anthropic', 'status_code': status_code}
-                    )
-
-                self._logger.warning(
-                    f"Claude API call failed (attempt {attempt + 1}/{max_retries + 1}): {error_message}"
-                )
-                if attempt < max_retries:
-                    time.sleep(self.RETRY_DELAY * (2 ** attempt))
-
-            except Exception as e:
-                last_error = e
-                self._logger.error(f"Unexpected error during Claude call: {str(e)}")
-                break
-
-        # All retries exhausted
-        self._record_failure()
-        raise ServiceError(
-            "Failed to generate content after retry attempts. Please try again shortly.",
-            code="API_ERROR",
-            details={'last_error': str(last_error), 'provider': 'anthropic'}
-        )
-
-    def _call_gemini_with_retry(
-        self,
-        system_prompt: str,
-        user_prompt: str,
-        temperature: float,
-        max_tokens: int,
-        model: str,
-        max_retries: int,
-        timeout_seconds: int,
-    ) -> Dict[str, Any]:
-        """
-        Call Gemini API with retry handling for transient failures.
-        """
-        last_error = None
-        url = (
-            f"https://generativelanguage.googleapis.com/v1beta/models/"
-            f"{model}:generateContent?key={self.gemini_api_key}"
-        )
-
-        payload = {
-            "contents": [{"parts": [{"text": user_prompt}]}],
-            "systemInstruction": {"parts": [{"text": system_prompt}]},
-            "generationConfig": {
-                "temperature": temperature,
-                "maxOutputTokens": max_tokens
-            }
-        }
-
-        for attempt in range(max_retries + 1):
-            try:
-                start_time = time.time()
-                request = urllib.request.Request(
-                    url=url,
-                    data=json.dumps(payload).encode('utf-8'),
-                    headers={'Content-Type': 'application/json'},
-                    method='POST'
-                )
-
-                with urllib.request.urlopen(request, timeout=timeout_seconds) as response:
-                    response_data = json.loads(response.read().decode('utf-8'))
-
-                generation_time = time.time() - start_time
-                candidates = response_data.get('candidates') or []
-                parts = (
-                    candidates[0].get('content', {}).get('parts', [])
-                    if candidates else []
-                )
-                content = ''.join(part.get('text', '') for part in parts)
-                usage = response_data.get('usageMetadata', {})
-
-                return {
-                    'content': content,
-                    'usage': {
-                        'model': model,
-                        'input_tokens': usage.get('promptTokenCount', 0),
-                        'output_tokens': usage.get('candidatesTokenCount', 0),
-                        'total_tokens': usage.get('totalTokenCount', 0),
-                        'generation_time_seconds': round(generation_time, 2),
-                        'retry_count': attempt,
-                        'provider': 'gemini'
-                    }
-                }
-
-            except urllib.error.HTTPError as e:
-                body = e.read().decode('utf-8', errors='ignore')
-                last_error = f"HTTP {e.code}: {body}"
-                lower_body = body.lower()
-                error_message = ""
-                error_reason = ""
-
-                try:
-                    parsed_error = json.loads(body)
-                    error_obj = parsed_error.get('error', {})
-                    error_message = error_obj.get('message', '')
-                    details = error_obj.get('details') or []
-                    for detail in details:
-                        if isinstance(detail, dict) and detail.get('reason'):
-                            error_reason = detail.get('reason', '')
-                            break
-                except Exception:
-                    pass
-
-                if e.code == 429 and (
-                    'resource_exhausted' in lower_body or
-                    'exceeded your current quota' in lower_body or
-                    'billing' in lower_body
-                ):
-                    raise ServiceError(
-                        "Gemini quota/billing issue: current key has exhausted quota. "
-                        "Enable billing or use a key/project with available quota.",
-                        code="BILLING_ERROR",
-                        details={'provider': 'gemini', 'status_code': e.code}
-                    )
-
-                if e.code < 500 and e.code != 429:
-                    if error_reason == 'API_KEY_INVALID' or 'api key expired' in lower_body:
-                        raise ServiceError(
-                            "Gemini API key is invalid or expired. Create/rotate a valid key and retry.",
-                            code="AUTH_ERROR",
-                            details={
-                                'provider': 'gemini',
-                                'status_code': e.code,
-                                'reason': error_reason or 'API_KEY_INVALID'
-                            }
-                        )
-
-                    if 'quota' in lower_body or 'billing' in lower_body or 'resource_exhausted' in lower_body:
-                        raise ServiceError(
-                            "Gemini billing/quota issue: please enable billing or increase quota.",
-                            code="BILLING_ERROR",
-                            details={'provider': 'gemini', 'status_code': e.code}
-                        )
-                    raise ServiceError(
-                        f"Gemini request failed: {error_message or 'check API key, model name, and payload.'}",
-                        code="API_REQUEST_ERROR",
-                        details={
-                            'provider': 'gemini',
-                            'status_code': e.code,
-                            'reason': error_reason or None
-                        }
-                    )
-
-                self._logger.warning(
-                    f"Gemini API call failed (attempt {attempt + 1}/{max_retries + 1}): {last_error}"
-                )
-                if attempt < max_retries:
-                    time.sleep(self.RETRY_DELAY * (2 ** attempt))
-
-            except Exception as e:
-                last_error = str(e)
-                self._logger.warning(
-                    f"Gemini API call failed (attempt {attempt + 1}/{max_retries + 1}): {last_error}"
-                )
-                if attempt < max_retries:
-                    time.sleep(self.RETRY_DELAY * (2 ** attempt))
-
-        self._record_failure()
-        raise ServiceError(
-            "Failed to generate content after retry attempts. Please try again shortly.",
-            code="API_ERROR",
-            details={'last_error': str(last_error), 'provider': 'gemini'}
-        )
-
     def _parse_response(self, raw_content: str) -> Dict[str, Any]:
         """
-        Parse Claude response to extract:
+        Parse an LLM response to extract:
         - Main markdown content
         - Sources/citations (if present)
         - Title (extracted from first heading)
@@ -603,15 +347,7 @@ class BlogGenerationService(BaseService[BlogPost]):
 
     def _analyze_structure(self, markdown: str) -> Dict[str, Any]:
         """Analyze markdown structure for frontend rendering"""
-        headings = re.findall(r'^(#{1,3})\s+(.+)$', markdown, re.MULTILINE)
-        word_count = len(markdown.split())
-
-        return {
-            'word_count': word_count,
-            'heading_count': len(headings),
-            'reading_time_minutes': max(1, word_count // 200),
-            'headings': [{'level': h[0], 'text': h[1]} for h in headings]
-        }
+        return compute_content_structure(markdown)
 
     def _update_post_with_content(
         self,
@@ -619,16 +355,17 @@ class BlogGenerationService(BaseService[BlogPost]):
         content: str,
         sources: List[Dict],
         structure: Dict,
-        metadata: Dict
+        metadata: Dict,
+        title: Optional[str] = None,
     ) -> None:
         """Update BlogPost with generated content and complete generation"""
         blog_post.generated_content = content
         blog_post.sources = sources
         blog_post.content_structure = structure
 
-        # Update title if extracted
-        if structure.get('title'):
-            blog_post.title = structure['title'][:300]
+        # Replace the "Draft: <topic>" placeholder with the generated headline.
+        if title:
+            blog_post.title = title[:300]
 
         # Merge metadata
         blog_post.metadata = {**(blog_post.metadata or {}), **metadata}
@@ -671,35 +408,6 @@ class BlogGenerationService(BaseService[BlogPost]):
             }
         except BlogPost.DoesNotExist:
             return None
-
-    def list_blog_posts(
-        self,
-        status: str = None,
-        persona_slug: str = None,
-        limit: int = 20
-    ) -> List[Dict]:
-        """List blog posts with optional filters"""
-        queryset = BlogPost.objects.all()
-
-        if status:
-            queryset = queryset.filter(status=status)
-        if persona_slug:
-            queryset = queryset.filter(persona__slug=persona_slug)
-
-        posts = queryset[:limit]
-
-        return [
-            {
-                'id': p.id,
-                'title': p.title,
-                'slug': p.slug,
-                'status': p.status,
-                'sentiment_score': p.sentiment_score,
-                'persona': p.persona.name if p.persona else None,
-                'created_at': p.created_at.isoformat()
-            }
-            for p in posts
-        ]
 
     def delete_blog_post(self, blog_post_id: int) -> bool:
         """Delete a blog post by ID"""

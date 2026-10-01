@@ -208,7 +208,7 @@ After the main content, include a "## Sources" section listing all references.
         )
 
     def format_response(self, raw_response: str) -> str:
-        """Format Claude response for consistent output"""
+        """Format an LLM response for consistent output"""
         import re
 
         # Clean up common formatting issues

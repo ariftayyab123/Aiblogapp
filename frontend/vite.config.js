@@ -17,5 +17,15 @@ export default defineConfig(({ mode }) => {
         },
       },
     },
+    build: {
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            vendor: ['react', 'react-dom', 'react-router-dom'],
+            'vendor-utils': ['axios', 'crypto-js'],
+          },
+        },
+      },
+    },
   }
 })
